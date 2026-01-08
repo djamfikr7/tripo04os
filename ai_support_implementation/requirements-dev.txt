@@ -1,0 +1,90 @@
+# Development dependencies for AI Support System
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-xdist==3.5.0
+pytest-timeout==2.2.0
+pytest-html==3.2.0
+pytest-json-report==1.5.0
+pytest-benchmark==4.0.0
+
+# Code Quality
+black==23.12.1
+isort==5.13.2
+flake8==7.0.0
+pylint==3.0.3
+mypy==1.7.1
+bandit==1.7.6
+safety==3.0.1
+pydocstyle==6.3.0
+pycodestyle==2.11.1
+
+# Type Checking
+types-requests==2.31.0.10
+types-redis==4.6.0.11
+types-PyYAML==6.0.12.12
+types-python-dateutil==2.8.19.14
+
+# Documentation
+pdoc==14.5.1
+mkdocs==1.5.3
+mkdocs-material==9.5.3
+mkdocs-mermaid2-plugin==1.1.1
+
+# Performance Profiling
+py-spy==0.3.14
+memory-profiler==0.61.0
+line-profiler==4.1.1
+
+# Load Testing
+locust==2.20.0
+
+# API Testing
+httpx==0.26.0
+websockets==12.0
+
+# Database Testing
+pytest-postgresql==5.1.1
+pytest-redis==3.0.2
+
+# Coverage
+coverage==7.3.2
+pytest-cov==4.1.0
+
+# Linting and Formatting
+pre-commit==3.6.0
+commitlint==18.4.3
+
+# Development Tools
+ipython==8.19.0
+jupyter==1.0.0
+notebook==7.0.6
+
+# Debugging
+ipdb==0.13.13
+pdbpp==0.10.3
+
+# Environment Management
+python-dotenv==1.0.0
+
+# Build Tools
+build==1.0.3
+twine==4.0.2
+
+# CI/CD
+pytest-github-actions-annotate-failures==0.2.0
+
+# Security
+bandit==1.7.6
+safety==3.0.1
+
+# Monitoring
+prometheus-client==0.19.0
+
+# Utilities
+rich==13.7.0
+typer==0.9.0
+click==8.1.7

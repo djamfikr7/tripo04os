@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tripo04os-profit-optimization
+  labels:
+    name: tripo04os-profit-optimization
+    project: tripo04os
+    component: profit-optimization

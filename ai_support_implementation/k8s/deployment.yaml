@@ -1,0 +1,291 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tripo04os-ai-support
+  namespace: tripo04os
+  labels:
+    app: tripo04os
+    component: ai-support
+    environment: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tripo04os
+      component: ai-support
+  template:
+    metadata:
+      labels:
+        app: tripo04os
+        component: ai-support
+        environment: production
+    spec:
+      containers:
+      - name: ai-support
+        image: tripo04os-ai-support:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8000
+            name: http
+            protocol: TCP
+        env:
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: ai-support-database-url
+                key: url
+          - name: REDIS_URL
+            valueFrom:
+              secretKeyRef:
+                name: ai-support-redis-url
+                key: url
+          - name: ELASTICSEARCH_URL
+            valueFrom:
+              secretKeyRef:
+                name: ai-support-elasticsearch-url
+                key: url
+          - name: SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ai-support-secret-key
+                key: secret-key
+          - name: MODEL_DEVICE
+            value: "cuda"
+          - name: API_HOST
+            value: "0.0.0.0"
+          - name: API_PORT
+            value: "8000"
+          - name: LOG_LEVEL
+            value: "INFO"
+          - name: WORKERS
+            value: "4"
+          - name: TARGET_AUTOMATION_RATE
+            value: "0.8"
+          - name: TARGET_RESPONSE_TIME_P50_MS
+            value: "500"
+          - name: TARGET_RESPONSE_TIME_P95_MS
+            value: "1000"
+          - name: TARGET_RESPONSE_TIME_P99_MS
+            value: "2000"
+          - name: TARGET_CONFIDENCE_SCORE
+            value: "0.7"
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+          - name: models-volume
+            mountPath: /app/models
+            readOnly: true
+          - name: knowledge-base-volume
+            mountPath: /app/data/knowledge-base
+            readOnly: true
+          - name: logs-volume
+            mountPath: /app/logs
+          - name: uploads-volume
+            mountPath: /app/uploads
+      volumes:
+        - name: models-volume
+          persistentVolumeClaim:
+            claimName: ai-support-models-pvc
+        - name: knowledge-base-volume
+          persistentVolumeClaim:
+            claimName: ai-support-knowledge-base-pvc
+        - name: logs-volume
+          persistentVolumeClaim:
+            claimName: ai-support-logs-pvc
+        - name: uploads-volume
+          persistentVolumeClaim:
+            claimName: ai-support-uploads-pvc
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tripo04os-ai-support
+  namespace: tripo04os
+  labels:
+    app: tripo04os
+    component: ai-support
+    environment: production
+spec:
+  selector:
+    app: tripo04os
+    component: ai-support
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8000
+      targetPort: http
+  type: ClusterIP
+  sessionAffinity: ClientIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: tripo04os-ai-support-hpa
+  namespace: tripo04os
+  labels:
+    app: tripo04os
+    component: ai-support
+    environment: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: tripo04os-ai-support
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: tripo04os-ai-support-pdb
+  namespace: tripo04os
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: tripo04os
+      component: ai-support
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tripo04os-ai-support-config
+  namespace: tripo04os
+data:
+  API_HOST: "0.0.0.0"
+  API_PORT: "8000"
+  LOG_LEVEL: "INFO"
+  WORKERS: "4"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-support-database-url
+  namespace: tripo04os
+type: Opaque
+data:
+  url: <BASE64-ENCODED-DATABASE-URL>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-support-redis-url
+  namespace: tripo04os
+type: Opaque
+data:
+  url: <BASE64-ENCODED-REDIS-URL>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-support-elasticsearch-url
+  namespace: tripo04os
+type: Opaque
+data:
+  url: <BASE64-ENCODED-ELASTICSEARCH-URL>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-support-secret-key
+  namespace: tripo04os
+type: Opaque
+data:
+  secret-key: <BASE64-ENCODED-SECRET-KEY>
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-support-models-pvc
+  namespace: tripo04os
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-support-knowledge-base-pvc
+  namespace: tripo04os
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-support-logs-pvc
+  namespace: tripo04os
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-support-uploads-pvc
+  namespace: tripo04os
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard

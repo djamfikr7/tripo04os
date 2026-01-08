@@ -1,0 +1,267 @@
+# Prometheus alerting rules for AI Support System
+
+groups:
+  - name: ai_support_alerts
+    interval: 30s
+    rules:
+      # API Health Alerts
+      - alert: APIDown
+        expr: up{job="ai-support-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "AI Support API is down"
+          description: "API {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: APIHighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "API error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}."
+
+      - alert: APISlowResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "API response time is slow"
+          description: "95th percentile response time is {{ $value }}s on {{ $labels.instance }}."
+
+      # Database Alerts
+      - alert: DatabaseDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Database {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: pg_stat_activity_count / pg_settings_max_connections > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection pool usage is {{ $value | humanizePercentage }}."
+
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_statements_calls_total{queryid!=""}[5m]) > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High rate of slow database queries"
+          description: "Slow query rate is {{ $value }} queries/second."
+
+      # Redis Alerts
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}."
+
+      - alert: RedisHighEvictionRate
+        expr: rate(redis_evicted_keys_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "High Redis eviction rate"
+          description: "Redis is evicting {{ $value }} keys/second."
+
+      # Elasticsearch Alerts
+      - alert: ElasticsearchDown
+        expr: up{job="elasticsearch-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: search
+        annotations:
+          summary: "Elasticsearch is down"
+          description: "Elasticsearch {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: ElasticsearchClusterRed
+        expr: elasticsearch_cluster_health_status{color="red"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          component: search
+        annotations:
+          summary: "Elasticsearch cluster status is RED"
+          description: "Elasticsearch cluster {{ $labels.cluster }} is in RED state."
+
+      - alert: ElasticsearchClusterYellow
+        expr: elasticsearch_cluster_health_status{color="yellow"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          component: search
+        annotations:
+          summary: "Elasticsearch cluster status is YELLOW"
+          description: "Elasticsearch cluster {{ $labels.cluster }} is in YELLOW state."
+
+      # AI Model Alerts
+      - alert: AILowConfidenceScore
+        expr: histogram_quantile(0.5, rate(ai_response_confidence_score_bucket[5m])) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: ai
+        annotations:
+          summary: "AI model confidence score is low"
+          description: "Median AI confidence score is {{ $value }}."
+
+      - alert: AILowAutomationRate
+        expr: rate(ai_automated_conversations_total[1h]) / rate(ai_total_conversations_total[1h]) < 0.7
+        for: 30m
+        labels:
+          severity: warning
+          component: ai
+        annotations:
+          summary: "AI automation rate is below target"
+          description: "Automation rate is {{ $value | humanizePercentage }}, target is 70%."
+
+      - alert: AIHighEscalationRate
+        expr: rate(ai_escalated_conversations_total[1h]) / rate(ai_total_conversations_total[1h]) > 0.3
+        for: 30m
+        labels:
+          severity: warning
+          component: ai
+        annotations:
+          summary: "High AI escalation rate detected"
+          description: "Escalation rate is {{ $value | humanizePercentage }}, target is <30%."
+
+      # Conversation Alerts
+      - alert: HighConversationVolume
+        expr: rate(ai_total_conversations_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: info
+          component: conversations
+        annotations:
+          summary: "High conversation volume detected"
+          description: "Conversation rate is {{ $value }} conversations/second."
+
+      - alert: LowUserSatisfaction
+        expr: histogram_quantile(0.5, rate(ai_user_satisfaction_score_bucket[1h])) < 3.5
+        for: 1h
+        labels:
+          severity: warning
+          component: conversations
+        annotations:
+          summary: "Low user satisfaction score"
+          description: "Median user satisfaction score is {{ $value }}/5."
+
+      # System Alerts
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}."
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space on {{ $labels.instance }} is {{ $value | humanizePercentage }} available."
+
+      # Container Alerts
+      - alert: ContainerRestarting
+        expr: rate(container_last_seen{container_label_com_docker_compose_service="ai-support-api"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: containers
+        annotations:
+          summary: "Container is restarting frequently"
+          description: "Container {{ $labels.name }} is restarting."
+
+      - alert: ContainerOOMKilled
+        expr: increase(container_oom_events_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: containers
+        annotations:
+          summary: "Container was OOM killed"
+          description: "Container {{ $labels.name }} was killed due to OOM."
+
+  - name: sla_alerts
+    interval: 1m
+    rules:
+      # SLA Alerts
+      - alert: SLAViolationResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: sla
+        annotations:
+          summary: "SLA violation: Response time exceeds threshold"
+          description: "95th percentile response time is {{ $value }}s, SLA threshold is 1s."
+
+      - alert: SLAViolationAvailability
+        expr: up{job="ai-support-api"} < 0.99
+        for: 5m
+        labels:
+          severity: critical
+          component: sla
+        annotations:
+          summary: "SLA violation: Availability below threshold"
+          description: "API availability is {{ $value | humanizePercentage }}, SLA threshold is 99%."
+
+      - alert: SLAViolationAutomationRate
+        expr: rate(ai_automated_conversations_total[1h]) / rate(ai_total_conversations_total[1h]) < 0.8
+        for: 1h
+        labels:
+          severity: warning
+          component: sla
+        annotations:
+          summary: "SLA violation: Automation rate below target"
+          description: "Automation rate is {{ $value | humanizePercentage }}, SLA target is 80%."

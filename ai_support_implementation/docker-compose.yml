@@ -1,0 +1,211 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: tripo04os-postgres
+    environment:
+      POSTGRES_USER: tripo04os
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tripo04os_ai_support
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tripo04os"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tripo04os-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: tripo04os-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tripo04os-network
+
+  # Elasticsearch
+  elasticsearch:
+    image: elasticsearch:8.10.0
+    container_name: tripo04os-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - tripo04os-network
+
+  # AI Support API
+  ai-support-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tripo04os-ai-support-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://tripo04os:password@postgres:5432/tripo04os_ai_support
+      REDIS_URL: redis://redis:6379/0
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      MODEL_DEVICE: cpu
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      LOG_LEVEL: INFO
+      WORKERS: 4
+      TARGET_AUTOMATION_RATE: 0.8
+      TARGET_RESPONSE_TIME_P50_MS: 500
+      TARGET_RESPONSE_TIME_P95_MS: 1000
+      TARGET_RESPONSE_TIME_P99_MS: 2000
+      TARGET_CONFIDENCE_SCORE: 0.7
+      ESCALATION_NEGATIVE_THRESHOLD: -0.5
+      ESCALATION_POSITIVE_THRESHOLD: 0.8
+      ESCALATION_CONFIDENCE_THRESHOLD: 0.5
+      ESCALATION_TIMEOUT_SECONDS: 300
+      RATE_LIMIT_PER_MINUTE: 100
+      RATE_LIMIT_BURST: 20
+      ENABLE_RATE_LIMITING: true
+      ENABLE_CACHING: true
+      CACHE_TTL_SECONDS: 3600
+      ENABLE_ENCRYPTION: true
+      ENABLE_ANONYMIZATION: true
+      RETENTION_DAYS_CONVERSATIONS: 90
+      RETENTION_DAYS_MESSAGES: 90
+      RETENTION_DAYS_FEEDBACK: 365
+      RETENTION_DAYS_METRICS: 730
+      WEBSOCKET_ENABLED: true
+      WEBSOCKET_MAX_CONNECTIONS: 100
+      WEBSOCKET_PING_INTERVAL: 20
+      WEBSOCKET_PING_TIMEOUT: 30
+      PERFORMANCE_PROFILING_ENABLED: true
+      PERFORMANCE_SAMPLING_RATE: 0.1
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+      - ./data/knowledge-base:/app/data/knowledge-base:ro
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tripo04os-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tripo04os-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  # Redis Commander (Redis GUI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: tripo04os-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - tripo04os-network
+
+  # pgAdmin (PostgreSQL GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tripo04os-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@tripo04os.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - tripo04os-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  tripo04os-network:
+    driver: bridge
