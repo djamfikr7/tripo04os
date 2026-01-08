@@ -1,0 +1,144 @@
+version: '1.0.0'
+
+name: Tripo04OS Events
+description: Event schemas for Tripo04OS platform microservices
+contact:
+  name: Tripo04OS Team
+  url: https://github.com/djamfikr7/tripo04os
+
+topics:
+  - name: identity.user.created
+    description: User registration event
+    schema: user-created.avsc
+
+  - name: identity.user.updated
+    description: User profile update event
+    schema: user-updated.avsc
+
+  - name: identity.user.deleted
+    description: User deletion event
+    schema: user-deleted.avsc
+
+  - name: identity.driver.registered
+    description: Driver registration event
+    schema: driver-registered.avsc
+
+  - name: identity.driver.updated
+    description: Driver profile update event
+    schema: driver-updated.avsc
+
+  - name: identity.driver.location.updated
+    description: Driver location update event
+    schema: driver-location-updated.avsc
+
+  - name: identity.driver.availability.changed
+    description: Driver availability change event
+    schema: driver-availability-changed.avsc
+
+  - name: order.created
+    description: New order created event
+    schema: order-created.avsc
+
+  - name: order.updated
+    description: Order status update event
+    schema: order-updated.avsc
+
+  - name: order.cancelled
+    description: Order cancellation event
+    schema: order-cancelled.avsc
+
+  - name: order.expired
+    description: Order expiration event
+    schema: order-expired.avsc
+
+  - name: trip.created
+    description: New trip created event
+    schema: trip-created.avsc
+
+  - name: trip.started
+    description: Trip started event
+    schema: trip-started.avsc
+
+  - name: trip.in.progress
+    description: Trip progress update event
+    schema: trip-in-progress.avsc
+
+  - name: trip.completed
+    description: Trip completed event
+    schema: trip-completed.avsc
+
+  - name: trip.cancelled
+    description: Trip cancellation event
+    schema: trip-cancelled.avsc
+
+  - name: matching.driver.matched
+    description: Driver matched to order event
+    schema: driver-matched.avsc
+
+  - name: matching.driver.unmatched
+    description: Driver unmatched event
+    schema: driver-unmatched.avsc
+
+  - name: matching.failed
+    description: Matching failure event
+    schema: matching-failed.avsc
+
+  - name: pricing.surge.changed
+    description: Surge pricing change event
+    schema: surge-changed.avsc
+
+  - name: pricing.quote.generated
+    description: Price quote generated event
+    schema: price-quote-generated.avsc
+
+  - name: communication.message.sent
+    description: Message sent event
+    schema: message-sent.avsc
+
+  - name: communication.notification.sent
+    description: Notification sent event
+    schema: notification-sent.avsc
+
+  - name: safety.sos.triggered
+    description: SOS emergency event
+    schema: sos-triggered.avsc
+
+  - name: safety.alert.raised
+    description: Safety alert event
+    schema: safety-alert-raised.avsc
+
+  - name: reputation.rating.submitted
+    description: Rating submitted event
+    schema: rating-submitted.avsc
+
+  - name: reputation.rating.updated
+    description: Rating updated event
+    schema: rating-updated.avsc
+
+  - name: fraud.suspicion.detected
+    description: Fraud suspicion detected event
+    schema: fraud-suspicion-detected.avsc
+
+  - name: fraud.alert.raised
+    description: Fraud alert event
+    schema: fraud-alert-raised.avsc
+
+  - name: subscription.created
+    description: Subscription created event
+    schema: subscription-created.avsc
+
+  - name: subscription.renewed
+    description: Subscription renewed event
+    schema: subscription-renewed.avsc
+
+  - name: subscription.cancelled
+    description: Subscription cancelled event
+    schema: subscription-cancelled.avsc
+
+  - name: analytics.event.ingested
+    description: Analytics event ingested
+    schema: analytics-event-ingested.avsc
+
+  - name: analytics.report.generated
+    description: Analytics report generated event
+    schema: analytics-report-generated.avsc

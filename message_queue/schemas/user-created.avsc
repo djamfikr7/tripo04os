@@ -1,0 +1,70 @@
+{
+  "type": "record",
+  "name": "UserCreated",
+  "namespace": "com.tripo04os.identity",
+  "doc": "User registration event",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "Unique event identifier"
+    },
+    {
+      "name": "event_timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "user_id",
+      "type": "string",
+      "doc": "User UUID"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "doc": "User email"
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "doc": "User phone number"
+    },
+    {
+      "name": "role",
+      "type": {
+        "type": "enum",
+        "symbols": ["RIDER", "DRIVER", "EMPLOYEE", "ADMIN"]
+      },
+      "doc": "User role"
+    },
+    {
+      "name": "profile",
+      "type": {
+        "type": "map",
+        "values": "string"
+      },
+      "doc": "User profile information"
+    },
+    {
+      "name": "is_email_verified",
+      "type": "boolean",
+      "doc": "Email verification status"
+    },
+    {
+      "name": "is_phone_verified",
+      "type": "boolean",
+      "doc": "Phone verification status"
+    },
+    {
+      "name": "created_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "User creation timestamp"
+    }
+  ]
+}
