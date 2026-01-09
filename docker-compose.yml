@@ -1,61 +1,13 @@
 version: '3.8'
 
 services:
-  identity-service:
-    build:
-      context: ./backend_services/identity_service
-      dockerfile: Dockerfile
-    container_name: tripo04os-identity-service
-    ports:
-      - "8001:8000"
-    environment:
-      - ENVIRONMENT=development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=tripo04os
-      - DB_PASSWORD=tripo04os123
-      - DB_NAME=tripo04os_identity
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - tripo04os-network
-    restart: unless-stopped
-
-  location-service:
-    build:
-      context: ./backend_services/location_service
-      dockerfile: Dockerfile
-    container_name: tripo04os-location-service
-    ports:
-      - "8002:8002"
-    environment:
-      - ENVIRONMENT=development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=tripo04os
-      - DB_PASSWORD=tripo04os123
-      - DB_NAME=tripo04os_location
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - tripo04os-network
-    restart: unless-stopped
-
   postgres:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.3-alpine
     container_name: tripo04os-postgres
     environment:
-      - POSTGRES_USER=tripo04os
-      - POSTGRES_PASSWORD=tripo04os123
-      - POSTGRES_MULTIPLE_DATABASES=tripo04os_identity,tripo04os_order,tripo04os_trip,tripo04os_location,tripo04os_pricing,tripo04os_communication,tripo04os_safety,tripo04os_reputation,tripo04os_fraud,tripo04os_subscription,tripo04os_analytics
+      POSTGRES_USER: tripo04os
+      POSTGRES_PASSWORD: tripo04os_password
+      POSTGRES_MULTIPLE_DATABASES: tripo04os_identity,tripo04os_order,tripo04os_trip,tripo04os_location,tripo04os_pricing,tripo04os_communication,tripo04os_safety,tripo04os_reputation,tripo04os_fraud,tripo04os_subscription,tripo04os_analytics,tripo04os_payment,tripo04os_maps,tripo04os_notification,tripo04os_sms
     ports:
       - "5432:5432"
     volumes:
@@ -105,26 +57,33 @@ services:
     image: confluentinc/cp-kafka:7.5.0
     container_name: tripo04os-kafka
     depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "29092:29092"
+      zookeeper:
+        condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    ports:
+      - "9092:9092"
+      - "29092:29092"
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
       - tripo04os-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.45.0
     container_name: tripo04os-prometheus
     ports:
       - "9090:9090"
@@ -134,14 +93,12 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
     networks:
       - tripo04os-network
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.1.0
     container_name: tripo04os-grafana
     ports:
       - "3000:3000"
@@ -151,6 +108,460 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  # Core Backend Services (1-12)
+  identity-service:
+    build:
+      context: ./backend_services/identity_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-identity-service
+    ports:
+      - "8001:8001"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_identity
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  location-service:
+    build:
+      context: ./backend_services/location_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-location-service
+    ports:
+      - "8002:8002"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_location
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ./backend_services/order_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-order-service
+    ports:
+      - "8003:8003"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_order
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  trip-service:
+    build:
+      context: ./backend_services/trip_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-trip-service
+    ports:
+      - "8004:8004"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_trip
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  matching-service:
+    build:
+      context: ./backend_services/matching_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-matching-service
+    ports:
+      - "8005:8005"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_matching
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  pricing-service:
+    build:
+      context: ./backend_services/pricing_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-pricing-service
+    ports:
+      - "8006:8006"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_pricing
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  communication-service:
+    build:
+      context: ./backend_services/communication_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-communication-service
+    ports:
+      - "8007:8007"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_communication
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  safety-service:
+    build:
+      context: ./backend_services/safety_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-safety-service
+    ports:
+      - "8008:8008"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_safety
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  reputation-service:
+    build:
+      context: ./backend_services/reputation_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-reputation-service
+    ports:
+      - "8009:8009"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_reputation
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  fraud-service:
+    build:
+      context: ./backend_services/fraud_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-fraud-service
+    ports:
+      - "8010:8010"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_fraud
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  subscription-service:
+    build:
+      context: ./backend_services/subscription_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-subscription-service
+    ports:
+      - "8011:8011"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_subscription
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  analytics-service:
+    build:
+      context: ./backend_services/analytics_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-analytics-service
+    ports:
+      - "8012:8012"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_analytics
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  # External Integration Services (13-16)
+  payment-service:
+    build:
+      context: ./backend_services/payment_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-payment-service
+    ports:
+      - "8013:8013"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_payment
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - PAYMENT_TYPE=CASH
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  maps-service:
+    build:
+      context: ./backend_services/maps_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-maps-service
+    ports:
+      - "8014:8014"
+    environment:
+      - ENVIRONMENT=development
+      - NOMINATIM_URL=https://nominatim.openstreetmap.org/search
+      - OSRM_URL=http://router.project-osrm.org/route/v1/driving
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ./backend_services/notification_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-notification-service
+    ports:
+      - "8015:8015"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_notification
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - FIREBASE_CREDENTIALS_PATH=/firebase/credentials.json
+      - FIREBASE_PROJECT_ID=tripo04os-dev
+    volumes:
+      - ./firebase/credentials.json:/firebase/credentials.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+
+  sms-service:
+    build:
+      context: ./backend_services/sms_service
+      dockerfile: Dockerfile
+    container_name: tripo04os-sms-service
+    ports:
+      - "8016:8016"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=tripo04os
+      - DATABASE_PASSWORD=tripo04os_password
+      - DATABASE_NAME=tripo04os_sms
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - SIMULATE_SMS=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     networks:
       - tripo04os-network
     restart: unless-stopped
