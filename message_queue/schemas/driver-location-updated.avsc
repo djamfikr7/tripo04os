@@ -1,0 +1,69 @@
+{
+  "type": "record",
+  "name": "DriverLocationUpdated",
+  "namespace": "com.tripo04os.identity",
+  "doc": "Driver location update event",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "Unique event identifier"
+    },
+    {
+      "name": "event_timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "driver_id",
+      "type": "string",
+      "doc": "Driver UUID"
+    },
+    {
+      "name": "latitude",
+      "type": "double",
+      "doc": "Driver latitude"
+    },
+    {
+      "name": "longitude",
+      "type": "double",
+      "doc": "Driver longitude"
+    },
+    {
+      "name": "accuracy",
+      "type": "double",
+      "doc": "Location accuracy in meters"
+    },
+    {
+      "name": "heading",
+      "type": "double",
+      "doc": "Driver heading in degrees"
+    },
+    {
+      "name": "speed",
+      "type": "double",
+      "doc": "Driver speed in km/h"
+    },
+    {
+      "name": "is_online",
+      "type": "boolean",
+      "doc": "Driver online status"
+    },
+    {
+      "name": "is_available",
+      "type": "boolean",
+      "doc": "Driver availability status"
+    },
+    {
+      "name": "last_seen",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Last seen timestamp"
+    }
+  ]
+}

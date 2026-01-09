@@ -1,0 +1,31 @@
+environment: development
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  read_timeout: 15s
+  write_timeout: 15s
+  idle_timeout: 60s
+
+database:
+  host: postgres
+  port: 5432
+  user: tripo04os
+  password: tripo04os123
+  database: tripo04os_identity
+  ssl_mode: disable
+  max_idle_conns: 25
+  max_open_conns: 25
+  conn_max_lifetime: 5m
+  conn_max_idle_time: 5m
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: your-super-secret-jwt-key-change-in-production
+  access_expire_time: 15m
+  refresh_expire_time: 7d

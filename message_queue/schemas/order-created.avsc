@@ -1,0 +1,118 @@
+{
+  "type": "record",
+  "name": "OrderCreated",
+  "namespace": "com.tripo04os.order",
+  "doc": "New order created event",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "Unique event identifier"
+    },
+    {
+      "name": "event_timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "order_id",
+      "type": "string",
+      "doc": "Order UUID"
+    },
+    {
+      "name": "user_id",
+      "type": "string",
+      "doc": "User (rider) UUID"
+    },
+    {
+      "name": "vertical",
+      "type": {
+        "type": "enum",
+        "symbols": ["RIDE", "MOTO", "FOOD", "GROCERY", "GOODS", "TRUCK_VAN"]
+      },
+      "doc": "Service vertical"
+    },
+    {
+      "name": "product",
+      "type": "string",
+      "doc": "Product type"
+    },
+    {
+      "name": "ride_type",
+      "type": {
+        "type": "enum",
+        "symbols": ["SOLO", "SHARED", "SCHEDULED", "LONG_DISTANCE", "CORPORATE", "WOMEN_ONLY"]
+      },
+      "doc": "Ride type"
+    },
+    {
+      "name": "pickup_location",
+      "type": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "latitude",
+            "type": "double"
+          },
+          {
+            "name": "longitude",
+            "type": "double"
+          },
+          {
+            "name": "address",
+            "type": "string"
+          }
+        ]
+      },
+      "doc": "Pickup location"
+    },
+    {
+      "name": "destination_location",
+      "type": {
+        "type": "record",
+        "fields": [
+          {
+            "name": "latitude",
+            "type": "double"
+          },
+          {
+            "name": "longitude",
+            "type": "double"
+          },
+          {
+            "name": "address",
+            "type": "string"
+          }
+        ]
+      },
+      "doc": "Destination location"
+    },
+    {
+      "name": "scheduled_pickup_time",
+      "type": ["null", {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }],
+      "doc": "Scheduled pickup time (null for immediate requests)"
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "symbols": ["PENDING", "SEARCHING", "MATCHED", "DRIVER_ASSIGNED", "DRIVER_EN_ROUTE", "ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "EXPIRED"]
+      },
+      "doc": "Order status"
+    },
+    {
+      "name": "created_at",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Order creation timestamp"
+    }
+  ]
+}
