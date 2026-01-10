@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Menu,
   X,
@@ -9,8 +10,10 @@ import {
   Car,
 } from 'lucide-react';
 
-export default function Navbar({ activeRoute }: { activeRoute: string }) {
+export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const activeRoute = location.pathname;
 
   const navItems = [
     { id: 'home', label: 'Home', icon: <Home className="w-5 h-5" /> },
@@ -31,17 +34,17 @@ export default function Navbar({ activeRoute }: { activeRoute: string }) {
 
           <div className="hidden md:flex items-center space-x-4">
             <a
-              href="/book"
+              href="/"
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeRoute === 'book' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeRoute === '/' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              Book a Ride
+              Home
             </a>
             <a
               href="/history"
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeRoute === 'history' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeRoute === '/history' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               History
@@ -49,7 +52,7 @@ export default function Navbar({ activeRoute }: { activeRoute: string }) {
             <a
               href="/profile"
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeRoute === 'profile' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeRoute === '/profile' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               Profile
@@ -72,18 +75,18 @@ export default function Navbar({ activeRoute }: { activeRoute: string }) {
           <div className="py-4 px-6">
             <div className="space-y-2">
               <a
-                href="/book"
+                href="/"
                 className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                  activeRoute === 'book' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
+                  activeRoute === '/' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
                 }`}
               >
-                <Car className="w-5 h-5 mr-3" />
-                <span>Book a Ride</span>
+                <Home className="w-5 h-5 mr-3" />
+                <span>Home</span>
               </a>
               <a
                 href="/history"
                 className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                  activeRoute === 'history' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
+                  activeRoute === '/history' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
                 }`}
               >
                 <Clock className="w-5 h-5 mr-3" />
@@ -92,7 +95,7 @@ export default function Navbar({ activeRoute }: { activeRoute: string }) {
               <a
                 href="/profile"
                 className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                  activeRoute === 'profile' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
+                  activeRoute === '/profile' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
                 }`}
               >
                 <User className="w-5 h-5 mr-3" />
