@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: communication-service-config
+  namespace: staging
+data:
+  # Service Configuration
+  PORT: "8007"
+  NODE_ENV: "staging"
+
+  # Database Configuration
+  DATABASE_HOST: "postgres-service-staging"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "tripo04os_communication_staging"
+  DATABASE_SYNCHRONIZE: "false"
+
+  # Socket.io Configuration
+  SOCKET_IO_CORS_ORIGIN: "https://staging.tripo04os.com"
+  SOCKET_IO_PING_TIMEOUT: "30000"
+  SOCKET_IO_PING_INTERVAL: "25000"
+
+  # Service URLs
+  IDENTITY_SERVICE_URL: "http://identity-service-staging:8000"
+  ORDER_SERVICE_URL: "http://order-service-staging:8001"
+  TRIP_SERVICE_URL: "http://trip-service-staging:8002"
+
+  # Logging
+  LOG_LEVEL: "info"

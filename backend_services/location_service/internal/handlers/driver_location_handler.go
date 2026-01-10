@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/djamfikr7/tripo04os/location-service/internal/models"
 	"github.com/djamfikr7/tripo04os/location-service/internal/repositories"
 	"github.com/djamfikr7/tripo04os/location-service/internal/services"
 	"github.com/gin-gonic/gin"
@@ -97,7 +98,7 @@ func (h *DriverLocationHandler) GetNearbyDrivers(c *gin.Context) {
 		return
 	}
 
-	lng, err = strconv.ParseFloat(lngStr, 64)
+	longitude, err := strconv.ParseFloat(lngStr, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid longitude"})
 		return
@@ -119,7 +120,7 @@ func (h *DriverLocationHandler) GetNearbyDrivers(c *gin.Context) {
 		}
 	}
 
-	drivers, err := h.service.GetNearbyDrivers(c.Request.Context(), lat, lng, radiusMeters, limit)
+	drivers, err := h.service.GetNearbyDrivers(c.Request.Context(), lat, longitude, radiusMeters, limit)
 	if err != nil {
 		h.logger.Error("failed to get nearby drivers", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get nearby drivers"})

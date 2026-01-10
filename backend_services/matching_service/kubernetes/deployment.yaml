@@ -1,0 +1,189 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tripo04os-dev
+  labels:
+    name: tripo04os-dev
+    environment: development
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: matching-service-config
+  namespace: tripo04os-dev
+data:
+  config.yaml: |
+    server:
+      host: 0.0.0.0
+      port: 8005
+    database:
+      host: postgres-service.tripo04os-dev.svc.cluster.local
+      port: 5433
+      name: tripo04os_matching
+      user: tripo04os
+      password: tripo04os123
+      sslmode: disable
+      pool_size: 10
+      max_overflow: 20
+    environment: development
+    log_level: debug
+    algorithm:
+      eta_weight: 0.35
+      rating_weight: 0.25
+      reliability_weight: 0.15
+      fairness_boost: 0.15
+      vehicle_weight: 0.10
+      max_match_distance_km: 50
+      max_eta_minutes: 30
+      fairness_boost_threshold: 0.3
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: matching-service-secrets
+  namespace: tripo04os-dev
+type: Opaque
+stringData:
+  database-password: tripo04os123
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: matching-service
+  namespace: tripo04os-dev
+  labels:
+    app: matching-service
+    service: matching-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8005
+      targetPort: 8005
+      protocol: TCP
+      name: http
+  selector:
+    app: matching-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matching-service
+  namespace: tripo04os-dev
+  labels:
+    app: matching-service
+    service: matching-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: matching-service
+  template:
+    metadata:
+      labels:
+        app: matching-service
+        service: matching-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: matching-service
+          image: tripo04os/matching-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8005
+              name: http
+              protocol: TCP
+            - containerPort: 9090
+              name: metrics
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: "development"
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: matching-service-config
+                  key: database.host
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: matching-service-config
+                  key: database.port
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: matching-service-config
+                  key: database.name
+            - name: DATABASE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: matching-service-config
+                  key: database.user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: matching-service-secrets
+                  key: database-password
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8005
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      restartPolicy: Always
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: matching-service-hpa
+  namespace: tripo04os-dev
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: matching-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: matching-service-pdb
+  namespace: tripo04os-dev
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: matching-service

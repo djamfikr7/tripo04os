@@ -1,0 +1,9 @@
+"""API router initialization"""
+
+from fastapi import APIRouter
+from app.api.routes import health, matching
+
+api_router = APIRouter()
+
+api_router.include_router(health.router, tags=["Health"])
+api_router.include_router(matching.router, tags=["Matching"])

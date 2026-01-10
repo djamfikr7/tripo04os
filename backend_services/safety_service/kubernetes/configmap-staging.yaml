@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: safety-service-config
+  namespace: staging
+data:
+  # Service Configuration
+  PORT: "8009"
+  ENVIRONMENT: "staging"
+
+  # Database Configuration
+  DATABASE_HOST: "postgres-service-staging"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "tripo04os_safety_staging"
+  DATABASE_SSL_MODE: "disable"
+
+  # Scheduler Configuration
+  CHECK_INTERVAL_MINUTES: "5"
+  MAX_RETRIES: "3"
+  RETENTION_DAYS: "90"
+
+  # Emergency Services
+  EMERGENCY_CONTACT_API_URL: "http://emergency-service.internal/api/v1"
+
+  # Recording Storage
+  STORAGE_TYPE: "s3"
+  S3_BUCKET: "tripo04os-recordings-staging"
+  S3_REGION: "us-east-1"
+
+  # Logging
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"

@@ -1,0 +1,305 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service
+  namespace: tripo04os
+  labels:
+    app: identity-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  selector:
+    app: identity-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: location-service
+  namespace: tripo04os
+  labels:
+    app: location-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8002
+    targetPort: 8002
+    protocol: TCP
+    name: http
+  selector:
+    app: location-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: tripo04os
+  labels:
+    app: order-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8003
+    targetPort: 8003
+    protocol: TCP
+    name: http
+  selector:
+    app: order-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trip-service
+  namespace: tripo04os
+  labels:
+    app: trip-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8004
+    targetPort: 8004
+    protocol: TCP
+    name: http
+  selector:
+    app: trip-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: matching-service
+  namespace: tripo04os
+  labels:
+    app: matching-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8005
+    targetPort: 8005
+    protocol: TCP
+    name: http
+  selector:
+    app: matching-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing-service
+  namespace: tripo04os
+  labels:
+    app: pricing-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8006
+    targetPort: 8006
+    protocol: TCP
+    name: http
+  selector:
+    app: pricing-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: communication-service
+  namespace: tripo04os
+  labels:
+    app: communication-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8007
+    targetPort: 8007
+    protocol: TCP
+    name: http
+  selector:
+    app: communication-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: safety-service
+  namespace: tripo04os
+  labels:
+    app: safety-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8008
+    targetPort: 8008
+    protocol: TCP
+    name: http
+  selector:
+    app: safety-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reputation-service
+  namespace: tripo04os
+  labels:
+    app: reputation-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8009
+    targetPort: 8009
+    protocol: TCP
+    name: http
+  selector:
+    app: reputation-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-service
+  namespace: tripo04os
+  labels:
+    app: fraud-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8010
+    targetPort: 8010
+    protocol: TCP
+    name: http
+  selector:
+    app: fraud-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: subscription-service
+  namespace: tripo04os
+  labels:
+    app: subscription-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8011
+    targetPort: 8011
+    protocol: TCP
+    name: http
+  selector:
+    app: subscription-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: tripo04os
+  labels:
+    app: analytics-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8012
+    targetPort: 8012
+    protocol: TCP
+    name: http
+  selector:
+    app: analytics-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: tripo04os
+  labels:
+    app: payment-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8013
+    targetPort: 8013
+    protocol: TCP
+    name: http
+  selector:
+    app: payment-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maps-service
+  namespace: tripo04os
+  labels:
+    app: maps-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8014
+    targetPort: 8014
+    protocol: TCP
+    name: http
+  selector:
+    app: maps-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: tripo04os
+  labels:
+    app: notification-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8015
+    targetPort: 8015
+    protocol: TCP
+    name: http
+  selector:
+    app: notification-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sms-service
+  namespace: tripo04os
+  labels:
+    app: sms-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8016
+    targetPort: 8016
+    protocol: TCP
+    name: http
+  selector:
+    app: sms-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: tripo04os
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgresql
+  selector:
+    app: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: tripo04os
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+    name: redis
+  selector:
+    app: redis

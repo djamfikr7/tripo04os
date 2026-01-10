@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: safety-service
+  namespace: staging
+  labels:
+    app: safety-service
+    environment: staging
+    service: safety
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: safety-service
+      environment: staging
+  template:
+    metadata:
+      labels:
+        app: safety-service
+        environment: staging
+        service: safety
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8009"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: safety-service
+        image: tripo04os/safety-service:staging-latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8009
+          protocol: TCP
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: PORT
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: ENVIRONMENT
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: DATABASE_HOST
+        - name: DATABASE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: DATABASE_PORT
+        - name: DATABASE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: DATABASE_NAME
+        - name: DATABASE_SSL_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: DATABASE_SSL_MODE
+        - name: DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: safety-service-secrets
+              key: DATABASE_USERNAME
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: safety-service-secrets
+              key: DATABASE_PASSWORD
+        - name: EMERGENCY_CONTACT_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: EMERGENCY_CONTACT_API_URL
+        - name: EMERGENCY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: safety-service-secrets
+              key: EMERGENCY_API_KEY
+        - name: CHECK_INTERVAL_MINUTES
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: CHECK_INTERVAL_MINUTES
+        - name: MAX_RETRIES
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: MAX_RETRIES
+        - name: RETENTION_DAYS
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: RETENTION_DAYS
+        - name: STORAGE_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: STORAGE_TYPE
+        - name: S3_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: S3_BUCKET
+        - name: S3_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: S3_REGION
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: safety-service-secrets
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: safety-service-secrets
+              key: AWS_SECRET_ACCESS_KEY
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: safety-service-secrets
+              key: JWT_SECRET
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: LOG_LEVEL
+        - name: LOG_FORMAT
+          valueFrom:
+            configMapKeyRef:
+              name: safety-service-config
+              key: LOG_FORMAT
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8009
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8009
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - safety-service
+              topologyKey: kubernetes.io/hostname

@@ -1,0 +1,283 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-proxy
+  namespace: api-gateway
+  labels:
+    app: kong
+    component: proxy
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ports:
+  - name: kong-proxy-http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  - name: kong-proxy-https
+    port: 443
+    targetPort: 8443
+    protocol: TCP
+  selector:
+    app: kong
+    component: proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-admin
+  namespace: api-gateway
+  labels:
+    app: kong
+    component: admin
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ports:
+  - name: kong-admin
+    port: 8001
+    targetPort: 8001
+    protocol: TCP
+  - name: kong-admin-https
+    port: 8444
+    targetPort: 8444
+    protocol: TCP
+  - name: kong-manager
+    port: 8002
+    targetPort: 8002
+    protocol: TCP
+  selector:
+    app: kong
+    component: proxy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  namespace: api-gateway
+  labels:
+    app: kong
+    component: proxy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kong
+      component: proxy
+  template:
+    metadata:
+      labels:
+        app: kong
+        component: proxy
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9542"
+        prometheus.io/path: "/metrics"
+    spec:
+      initContainers:
+      - name: wait-for-migrations
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          until nc -z postgres 5432; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+          echo "Postgres is ready!"
+      containers:
+      - name: kong
+        image: kong/kong-gateway:3.4.3.4-ubuntu
+        envFrom:
+        - configMapRef:
+            name: kong-config
+        - secretRef:
+            name: kong-secrets
+        env:
+        - name: KONG_DATABASE
+          value: "postgres"
+        - name: KONG_PG_HOST
+          value: "postgres"
+        - name: KONG_PG_PORT
+          value: "5432"
+        - name: KONG_PG_DATABASE
+          value: "kong"
+        - name: KONG_PG_USER
+          value: "kong"
+        - name: KONG_PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kong-secrets
+              key: KONG_PG_PASSWORD
+        - name: KONG_NGINX_DAEMON
+          value: "off"
+        - name: KONG_ADMIN_LISTEN
+          value: "0.0.0.0:8001"
+        - name: KONG_ADMIN_GUI_LISTEN
+          value: "0.0.0.0:8002"
+        - name: KONG_STATUS_LISTEN
+          value: "0.0.0.0:8100"
+        - name: KONG_PROXY_LISTEN
+          value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+        ports:
+        - name: kong-proxy-http
+          containerPort: 8000
+          protocol: TCP
+        - name: kong-proxy-https
+          containerPort: 8443
+          protocol: TCP
+        - name: kong-admin
+          containerPort: 8001
+          protocol: TCP
+        - name: kong-manager
+          containerPort: 8002
+          protocol: TCP
+        - name: status
+          containerPort: 8100
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: 8100
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: 8100
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        volumeMounts:
+        - name: kong-config-volume
+          mountPath: /usr/local/kong/declarative/
+          readOnly: true
+      volumes:
+      - name: kong-config-volume
+        configMap:
+          name: kong-declarative
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-declarative
+  namespace: api-gateway
+  labels:
+    app: kong
+data:
+  kong.yml: |
+    _format_version: "1.1"
+    services:
+      - name: identity-service
+        url: http://identity-service:8001
+        routes:
+          - name: identity-auth
+            paths: ["/api/v1/auth(/|$)"]
+            strip_path: true
+      - name: location-service
+        url: http://location-service:8002
+        routes:
+          - name: location-routes
+            paths: ["/api/v1/locations(/|$)"]
+            strip_path: true
+      - name: order-service
+        url: http://order-service:8003
+        routes:
+          - name: order-routes
+            paths: ["/api/v1/orders(/|$)"]
+            strip_path: true
+      - name: trip-service
+        url: http://trip-service:8004
+        routes:
+          - name: trip-routes
+            paths: ["/api/v1/trips(/|$)"]
+            strip_path: true
+      - name: matching-service
+        url: http://matching-service:8005
+        routes:
+          - name: matching-routes
+            paths: ["/api/v1/matching(/|$)"]
+            strip_path: true
+      - name: pricing-service
+        url: http://pricing-service:8006
+        routes:
+          - name: pricing-routes
+            paths: ["/api/v1/pricing(/|$)"]
+            strip_path: true
+      - name: communication-service
+        url: http://communication-service:8007
+        routes:
+          - name: communication-routes
+            paths: ["/api/v1/communication(/|$)"]
+            strip_path: true
+      - name: safety-service
+        url: http://safety-service:8008
+        routes:
+          - name: safety-routes
+            paths: ["/api/v1/safety(/|$)"]
+            strip_path: true
+      - name: reputation-service
+        url: http://reputation-service:8009
+        routes:
+          - name: reputation-routes
+            paths: ["/api/v1/reputation(/|$)"]
+            strip_path: true
+      - name: fraud-service
+        url: http://fraud-service:8010
+        routes:
+          - name: fraud-routes
+            paths: ["/api/v1/fraud(/|$)"]
+            strip_path: true
+      - name: subscription-service
+        url: http://subscription-service:8011
+        routes:
+          - name: subscription-routes
+            paths: ["/api/v1/subscriptions(/|$)"]
+            strip_path: true
+      - name: analytics-service
+        url: http://analytics-service:8012
+        routes:
+          - name: analytics-routes
+            paths: ["/api/v1/analytics(/|$)"]
+            strip_path: true
+      - name: payment-service
+        url: http://payment-service:8013
+        routes:
+          - name: payment-routes
+            paths: ["/api/v1/payments(/|$)"]
+            strip_path: true
+      - name: maps-service
+        url: http://maps-service:8014
+        routes:
+          - name: maps-routes
+            paths: ["/api/v1/maps(/|$)"]
+            strip_path: true
+      - name: notification-service
+        url: http://notification-service:8015
+        routes:
+          - name: notification-routes
+            paths: ["/api/v1/notifications(/|$)"]
+            strip_path: true
+      - name: sms-service
+        url: http://sms-service:8016
+        routes:
+          - name: sms-routes
+            paths: ["/api/v1/sms(/|$)"]
+            strip_path: true
+    plugins:
+      - name: cors
+        config:
+          origins: "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - PATCH
+            - OPTIONS
+          allowed_headers:
+            - Content-Type
+            - Authorization
+            - X-Requested-With
+          max_age: 3600
+          credentials: true

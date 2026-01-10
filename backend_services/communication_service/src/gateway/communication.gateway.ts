@@ -6,12 +6,18 @@ import {
   OnGatewayDisconnect,
   MessageBody,
   ConnectedSocket,
+  Logger,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { CommunicationService } from '../services/communication.service';
+import { MessageType, SenderRole } from '../entities/message.entity';
+import { DeliveryStatus } from '../entities/message-receipt.entity';
+import { NotificationType } from '../entities/notification.entity';
 
 interface UserInfo {
   userId: string;
   role: 'RIDER' | 'DRIVER' | 'ADMIN';
+  socketId: string;
   connectedAt: Date;
 }
 
@@ -24,24 +30,30 @@ interface RoomInfo {
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: process.env.SOCKET_IO_CORS_ORIGIN || '*',
     methods: ['GET', 'POST'],
     credentials: true,
   },
   namespace: '/',
+  pingTimeout: parseInt(process.env.SOCKET_IO_PING_TIMEOUT || '30000'),
+  pingInterval: parseInt(process.env.SOCKET_IO_PING_INTERVAL || '25000'),
 })
 export class Gateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(Gateway.name);
   private users: Map<string, UserInfo> = new Map();
   private rooms: Map<string, RoomInfo> = new Map();
+
+  constructor(private readonly communicationService: CommunicationService) {}
 
   handleConnection(client: Socket) {
     const userId = client.handshake.query.userId as string;
     const role = client.handshake.query.role as 'RIDER' | 'DRIVER' | 'ADMIN';
 
     if (!userId || !role) {
+      this.logger.warn(`Connection rejected: missing userId or role`);
       client.disconnect();
       return;
     }
@@ -52,10 +64,11 @@ export class Gateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.users.set(client.id, {
       userId,
       role,
+      socketId: client.id,
       connectedAt: new Date(),
     });
 
-    console.log(`Client connected: ${client.id}, User: ${userId}, Role: ${role}`);
+    this.logger.log(`Client connected: ${client.id}, User: ${userId}, Role: ${role}`);
 
     client.emit('connected', {
       status: 'connected',
@@ -68,7 +81,7 @@ export class Gateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userInfo = this.users.get(client.id);
 
     if (userInfo) {
-      console.log(
+      this.logger.log(
         `Client disconnected: ${client.id}, User: ${userInfo.userId}, Role: ${userInfo.role}`,
       );
 
@@ -78,29 +91,39 @@ export class Gateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('joinRoom')
-  handleJoinRoom(
+  async handleJoinRoom(
     @MessageBody() data: { orderId: string; userId: string },
     @ConnectedSocket() client: Socket,
   ) {
     const roomName = `order:${data.orderId}`;
 
-    client.join(roomName);
+    try {
+      client.join(roomName);
 
-    this.rooms.set(roomName, {
-      orderId: data.orderId,
-      riderId: data.userId,
-      createdAt: new Date(),
-    });
+      const roomInfo = {
+        orderId: data.orderId,
+        riderId: data.userId,
+        createdAt: new Date(),
+      };
 
-    console.log(
-      `User ${data.userId} joined room ${roomName} (socket: ${client.id})`,
-    );
+      this.rooms.set(roomName, roomInfo);
 
-    client.emit('roomJoined', {
-      orderId: data.orderId,
-      status: 'joined',
-      timestamp: new Date().toISOString(),
-    });
+      this.logger.log(
+        `User ${data.userId} joined room ${roomName} (socket: ${client.id})`,
+      );
+
+      client.emit('roomJoined', {
+        orderId: data.orderId,
+        status: 'joined',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.error(`Error joining room ${roomName}:`, error);
+      client.emit('error', {
+        message: 'Failed to join room',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   @SubscribeMessage('leaveRoom')
@@ -111,10 +134,9 @@ export class Gateway implements OnGatewayConnection, OnGatewayDisconnect {
     const roomName = `order:${data.orderId}`;
 
     client.leave(roomName);
-
     this.rooms.delete(roomName);
 
-    console.log(
+    this.logger.log(
       `Socket ${client.id} left room ${roomName}`,
     );
 
@@ -126,27 +148,107 @@ export class Gateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('sendMessage')
-  handleSendMessage(
+  async handleSendMessage(
     @MessageBody()
     data: {
       orderId: string;
       senderId: string;
+      receiverId: string;
+      senderRole: string;
       message: string;
-      type?: 'TEXT' | 'LOCATION' | 'SYSTEM';
+      type?: string;
+      metadata?: Record<string, any>;
     },
     @ConnectedSocket() client: Socket,
   ) {
     const roomName = `order:${data.orderId}`;
 
-    this.server.to(roomName).emit('message', {
-      orderId: data.orderId,
-      senderId: data.senderId,
-      message: data.message,
-      type: data.type || 'TEXT',
-      timestamp: new Date().toISOString(),
-    });
+    try {
+      const senderRole = this.parseSenderRole(data.senderRole);
 
-    console.log(`Message sent in room ${roomName}:`, data);
+      const message = await this.communicationService.createMessage({
+        orderId: data.orderId,
+        senderId: data.senderId,
+        receiverId: data.receiverId,
+        senderRole,
+        content: data.message,
+        messageType: this.parseMessageType(data.type),
+        metadata: data.metadata || {},
+      });
+
+      this.server.to(roomName).emit('message', {
+        orderId: data.orderId,
+        messageId: message.id,
+        senderId: data.senderId,
+        receiverId: data.receiverId,
+        senderRole: data.senderRole,
+        message: data.message,
+        type: data.type || 'TEXT',
+        timestamp: new Date().toISOString(),
+      });
+
+      this.logger.log(`Message sent in room ${roomName}:`, {
+        messageId: message.id,
+        senderId: data.senderId,
+      });
+    } catch (error) {
+      this.logger.error(`Error sending message in room ${roomName}:`, error);
+      client.emit('error', {
+        message: 'Failed to send message',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  @SubscribeMessage('markMessageAsRead')
+  async handleMarkMessageAsRead(
+    @MessageBody() data: { messageId: string; userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      await this.communicationService.createMessageReceipt({
+        messageId: data.messageId,
+        userId: data.userId,
+        deliveryStatus: DeliveryStatus.READ,
+      });
+
+      this.logger.log(`Message marked as read: ${data.messageId} by ${data.userId}`);
+
+      client.emit('messageRead', {
+        messageId: data.messageId,
+        status: 'read',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.error(`Error marking message as read:`, error);
+      client.emit('error', {
+        message: 'Failed to mark message as read',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  @SubscribeMessage('markAllAsRead')
+  async handleMarkAllAsRead(
+    @MessageBody() data: { userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      await this.communicationService.markAllNotificationsAsRead(data.userId);
+
+      this.logger.log(`All notifications marked as read for user: ${data.userId}`);
+
+      client.emit('allMessagesRead', {
+        status: 'success',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.error(`Error marking all as read:`, error);
+      client.emit('error', {
+        message: 'Failed to mark all as read',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   broadcastOrderUpdate(orderId: string, update: any) {
@@ -175,6 +277,40 @@ export class Gateway implements OnGatewayConnection, OnGatewayDisconnect {
         });
       }
     });
+  }
+
+  async sendOrderUpdateNotification(
+    orderId: string,
+    userId: string,
+    updateType: NotificationType,
+    updateData: Record<string, any>,
+  ) {
+    const notification = await this.communicationService.sendOrderUpdateNotification(
+      orderId,
+      userId,
+      updateType,
+      updateData,
+    );
+
+    this.sendNotificationToUser(userId, notification);
+  }
+
+  private parseSenderRole(role: string): SenderRole {
+    const upperRole = role.toUpperCase();
+    if (Object.values(SenderRole).includes(upperRole as SenderRole)) {
+      return upperRole as SenderRole;
+    }
+    return SenderRole.RIDER;
+  }
+
+  private parseMessageType(type?: string): MessageType {
+    if (!type) return MessageType.TEXT;
+
+    const upperType = type.toUpperCase();
+    if (Object.values(MessageType).includes(upperType as MessageType)) {
+      return upperType as MessageType;
+    }
+    return MessageType.TEXT;
   }
 
   private leaveAllRooms(client: Socket) {

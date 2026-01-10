@@ -1,0 +1,186 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tripo04os-ingress
+  namespace: tripo04os
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.tripo04os.com
+    secretName: tripo04os-tls
+  rules:
+  - host: api.tripo04os.com
+    http:
+      paths:
+      - path: /v1/identity
+        pathType: Prefix
+        backend:
+          service:
+            name: identity-service
+            port:
+              number: 8001
+      - path: /v1/location
+        pathType: Prefix
+        backend:
+          service:
+            name: location-service
+            port:
+              number: 8002
+      - path: /v1/order
+        pathType: Prefix
+        backend:
+          service:
+            name: order-service
+            port:
+              number: 8003
+      - path: /v1/trip
+        pathType: Prefix
+        backend:
+          service:
+            name: trip-service
+            port:
+              number: 8004
+      - path: /v1/matching
+        pathType: Prefix
+        backend:
+          service:
+            name: matching-service
+            port:
+              number: 8005
+      - path: /v1/pricing
+        pathType: Prefix
+        backend:
+          service:
+            name: pricing-service
+            port:
+              number: 8006
+      - path: /v1/communication
+        pathType: Prefix
+        backend:
+          service:
+            name: communication-service
+            port:
+              number: 8007
+      - path: /v1/safety
+        pathType: Prefix
+        backend:
+          service:
+            name: safety-service
+            port:
+              number: 8008
+      - path: /v1/reputation
+        pathType: Prefix
+        backend:
+          service:
+            name: reputation-service
+            port:
+              number: 8009
+      - path: /v1/fraud
+        pathType: Prefix
+        backend:
+          service:
+            name: fraud-service
+            port:
+              number: 8010
+      - path: /v1/subscription
+        pathType: Prefix
+        backend:
+          service:
+            name: subscription-service
+            port:
+              number: 8011
+      - path: /v1/analytics
+        pathType: Prefix
+        backend:
+          service:
+            name: analytics-service
+            port:
+              number: 8012
+      - path: /v1/payment
+        pathType: Prefix
+        backend:
+          service:
+            name: payment-service
+            port:
+              number: 8013
+      - path: /v1/maps
+        pathType: Prefix
+        backend:
+          service:
+            name: maps-service
+            port:
+              number: 8014
+      - path: /v1/notification
+        pathType: Prefix
+        backend:
+          service:
+            name: notification-service
+            port:
+              number: 8015
+      - path: /v1/sms
+        pathType: Prefix
+        backend:
+          service:
+            name: sms-service
+            port:
+              number: 8016
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tripo04os-web-ingress
+  namespace: tripo04os
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - web.tripo04os.com
+    secretName: tripo04os-web-tls
+  rules:
+  - host: web.tripo04os.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-interface
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tripo04os-admin-ingress
+  namespace: tripo04os
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - admin.tripo04os.com
+    secretName: tripo04os-admin-tls
+  rules:
+  - host: admin.tripo04os.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-dashboard
+            port:
+              number: 80

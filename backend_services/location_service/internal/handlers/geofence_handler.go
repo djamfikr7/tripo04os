@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/djamfikr7/tripo04os/location-service/internal/models"
 	"github.com/djamfikr7/tripo04os/location-service/internal/repositories"
 	"github.com/djamfikr7/tripo04os/location-service/internal/services"
 	"github.com/gin-gonic/gin"
@@ -26,15 +27,15 @@ func NewGeofenceHandler(service services.GeofenceService, logger *zap.Logger) *G
 }
 
 type CreateGeofenceRequest struct {
-	Name            string                  `json:"name" binding:"required"`
-	Type            models.GeofenceType     `json:"type" binding:"required"`
-	Area            []models.LocationPoint   `json:"area" binding:"required,min=3"`
-	CenterPoint     models.LocationPoint      `json:"center_point"`
-	RadiusMeters   int                     `json:"radius_meters"`
-	SurgeMultiplier float64                 `json:"surge_multiplier"`
-	IsActive       bool                    `json:"is_active"`
-	Priority       int                     `json:"priority"`
-	Description     string                  `json:"description"`
+	Name            string                 `json:"name" binding:"required"`
+	Type            models.GeofenceType    `json:"type" binding:"required"`
+	Area            []models.LocationPoint `json:"area" binding:"required,min=3"`
+	CenterPoint     models.LocationPoint   `json:"center_point"`
+	RadiusMeters    int                    `json:"radius_meters"`
+	SurgeMultiplier float64                `json:"surge_multiplier"`
+	IsActive        bool                   `json:"is_active"`
+	Priority        int                    `json:"priority"`
+	Description     string                 `json:"description"`
 }
 
 func (h *GeofenceHandler) CreateGeofence(c *gin.Context) {
@@ -52,7 +53,7 @@ func (h *GeofenceHandler) CreateGeofence(c *gin.Context) {
 		polygon += fmt.Sprintf("%f %f", point.Longitude, point.Latitude)
 	}
 	polygon += "))"
-	
+
 	centerPoint := fmt.Sprintf("POINT(%f %f)", req.CenterPoint.Longitude, req.CenterPoint.Latitude)
 
 	geofence := &models.Geofence{
@@ -60,10 +61,10 @@ func (h *GeofenceHandler) CreateGeofence(c *gin.Context) {
 		Type:            req.Type,
 		Area:            polygon,
 		CenterPoint:     centerPoint,
-		RadiusMeters:   req.RadiusMeters,
+		RadiusMeters:    req.RadiusMeters,
 		SurgeMultiplier: req.SurgeMultiplier,
-		IsActive:       req.IsActive,
-		Priority:       req.Priority,
+		IsActive:        req.IsActive,
+		Priority:        req.Priority,
 		Description:     req.Description,
 	}
 
@@ -102,9 +103,9 @@ func (h *GeofenceHandler) ListGeofences(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"geofences": geofences,
-		"total":      total,
-		"limit":      limit,
-		"offset":     offset,
+		"total":     total,
+		"limit":     limit,
+		"offset":    offset,
 	})
 }
 
@@ -191,6 +192,6 @@ func (h *GeofenceHandler) CheckGeofence(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"geofences": geofences,
-		"count":      len(geofences),
+		"count":     len(geofences),
 	})
 }

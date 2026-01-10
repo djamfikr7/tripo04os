@@ -1,0 +1,484 @@
+_format_version: "1.1"
+
+services:
+  - name: identity-service
+    url: http://identity-service:8001
+    tags:
+      - core
+      - authentication
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: identity-auth
+        paths: ["/api/v1/auth(/|$)"]
+        strip_path: true
+        plugins:
+          - name: jwt
+          - name: rate-limiting
+            config:
+              minute: 100
+              hour: 1000
+              policy: local
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          hour: 1000
+          policy: local
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+            - 301
+
+  - name: location-service
+    url: http://location-service:8002
+    tags:
+      - core
+      - geospatial
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: location-routes
+        paths: ["/api/v1/locations(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 200
+              hour: 2000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: order-service
+    url: http://order-service:8003
+    tags:
+      - core
+      - business-logic
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: order-routes
+        paths: ["/api/v1/orders(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 150
+              hour: 1500
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: trip-service
+    url: http://trip-service:8004
+    tags:
+      - core
+      - business-logic
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: trip-routes
+        paths: ["/api/v1/trips(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 150
+              hour: 1500
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: matching-service
+    url: http://matching-service:8005
+    tags:
+      - core
+      - algorithm
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: matching-routes
+        paths: ["/api/v1/matching(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 100
+              hour: 1000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: pricing-service
+    url: http://pricing-service:8006
+    tags:
+      - core
+      - business-logic
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: pricing-routes
+        paths: ["/api/v1/pricing(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 100
+              hour: 1000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: communication-service
+    url: http://communication-service:8007
+    tags:
+      - core
+      - real-time
+      - websocket
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: communication-routes
+        paths: ["/api/v1/communication(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 200
+              hour: 2000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: safety-service
+    url: http://safety-service:8008
+    tags:
+      - core
+      - safety
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: safety-routes
+        paths: ["/api/v1/safety(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 50
+              hour: 500
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: reputation-service
+    url: http://reputation-service:8009
+    tags:
+      - core
+      - business-logic
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: reputation-routes
+        paths: ["/api/v1/reputation(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 100
+              hour: 1000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: fraud-service
+    url: http://fraud-service:8010
+    tags:
+      - core
+      - security
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: fraud-routes
+        paths: ["/api/v1/fraud(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 50
+              hour: 500
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: subscription-service
+    url: http://subscription-service:8011
+    tags:
+      - core
+      - business-logic
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: subscription-routes
+        paths: ["/api/v1/subscriptions(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 100
+              hour: 1000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: analytics-service
+    url: http://analytics-service:8012
+    tags:
+      - core
+      - reporting
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: analytics-routes
+        paths: ["/api/v1/analytics(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 200
+              hour: 2000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: payment-service
+    url: http://payment-service:8013
+    tags:
+      - integration
+      - external
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: payment-routes
+        paths: ["/api/v1/payments(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 100
+              hour: 1000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: maps-service
+    url: http://maps-service:8014
+    tags:
+      - integration
+      - external
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: maps-routes
+        paths: ["/api/v1/maps(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 200
+              hour: 2000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: notification-service
+    url: http://notification-service:8015
+    tags:
+      - integration
+      - external
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: notification-routes
+        paths: ["/api/v1/notifications(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 200
+              hour: 2000
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+  - name: sms-service
+    url: http://sms-service:8016
+    tags:
+      - integration
+      - external
+      - production
+    connect_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: sms-routes
+        paths: ["/api/v1/sms(/|$)"]
+        strip_path: true
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 50
+              hour: 500
+    healthchecks:
+      active:
+        type: http
+        http:
+          path: /health
+          unhealthy_threshold: 3
+          healthy_threshold: 1
+          http_statuses:
+            - 200
+
+plugins:
+  - name: cors
+    enabled: true
+    config:
+      origins: "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - OPTIONS
+      allowed_headers:
+        - Content-Type
+        - Authorization
+        - X-Requested-With
+      exposed_headers:
+        - Content-Length
+        - Content-Type
+      max_age: 3600
+      credentials: true
+
+  - name: request-logger
+    enabled: true
+    config:
+      timeout: 60000
+
+  - name: response-logger
+    enabled: true
+    config:
+      timeout: 60000
+
+  - name: jwt
+    enabled: false
+    config:
+      secret_or_env_name: "JWT_SECRET"
+      key_claim_name: "sub"
+      algorithm: "HS256"
+      token_expiration: 3600

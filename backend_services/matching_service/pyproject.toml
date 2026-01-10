@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "matching-service"
+version = "1.0.0"
+description = "Tripo04OS Matching Service - Driver matching and scoring algorithm"
+authors = ["Tripo04OS"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.104.1"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+sqlalchemy = "^2.0.23"
+psycopg2-binary = "^2.9.9"
+asyncpg = "^0.29.0"
+alembic = "^1.13.0"
+redis = "^5.0.1"
+kafka-python = "^2.0.2"
+numpy = "^1.26.2"
+scipy = "^1.12.0"
+geoalchemy2 = "^0.14.3"
+geopy = "^2.4.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+python-multipart = "^0.0.6"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.1"
+pytest-cov = "^4.1.0"
+httpx = "^0.25.2"
+black = "^23.12.1"
+flake8 = "^6.1.0"
+mypy = "^1.8.0"
+
+[tool.poetry.scripts]
+start = "uvicorn app.main:app --reload --host 0.0.0.0 --port 8005"
+test = "pytest tests/"
+test-cov = "pytest --cov=app --cov-report=html tests/"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: communication-service
+  namespace: staging
+  labels:
+    app: communication-service
+    environment: staging
+    service: communication
+spec:
+  type: ClusterIP
+  selector:
+    app: communication-service
+    environment: staging
+  ports:
+  - name: http
+    port: 8007
+    targetPort: 8007
+    protocol: TCP
+  - name: websocket
+    port: 8008
+    targetPort: 8008
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: communication-service-hpa
+  namespace: staging
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: communication-service
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

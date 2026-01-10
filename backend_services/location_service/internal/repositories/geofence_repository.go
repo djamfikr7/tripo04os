@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/djamfikr7/tripo04os/location-service/internal/models"
 	"github.com/google/uuid"
@@ -97,9 +98,9 @@ func (r *geofenceRepository) GetActiveSurgeZones(ctx context.Context) ([]*models
 
 func (r *geofenceRepository) CheckPointInGeofence(ctx context.Context, lat, lng float64) ([]*models.Geofence, error) {
 	var geofences []*models.Geofence
-	
+
 	point := fmt.Sprintf("POINT(%f %f)", lng, lat)
-	
+
 	query := `
 		SELECT id, name, type, area, center_point, radius_meters, surge_multiplier, 
 			   is_active, priority, description, created_at, updated_at
@@ -108,7 +109,7 @@ func (r *geofenceRepository) CheckPointInGeofence(ctx context.Context, lat, lng 
 			AND ST_Contains(area, ST_GeomFromText(?, 4326))
 		ORDER BY priority DESC
 	`
-	
+
 	err := r.db.WithContext(ctx).Raw(query, point).Find(&geofences).Error
 	return geofences, err
 }

@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: communication-service
+  namespace: dev
+  labels:
+    app: communication-service
+    environment: dev
+    service: communication
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: communication-service
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: communication-service
+        environment: dev
+        service: communication
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8007"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: communication-service
+        image: tripo04os/communication-service:dev-latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8007
+          protocol: TCP
+        - name: websocket
+          containerPort: 8008
+          protocol: TCP
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: PORT
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: NODE_ENV
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: DATABASE_HOST
+        - name: DATABASE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: DATABASE_PORT
+        - name: DATABASE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: DATABASE_NAME
+        - name: DATABASE_SYNCHRONIZE
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: DATABASE_SYNCHRONIZE
+        - name: DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: communication-service-secrets
+              key: DATABASE_USERNAME
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: communication-service-secrets
+              key: DATABASE_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: communication-service-secrets
+              key: JWT_SECRET
+        - name: WEBSOCKET_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: communication-service-secrets
+              key: WEBSOCKET_SECRET
+        - name: IDENTITY_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: IDENTITY_SERVICE_URL
+        - name: ORDER_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: ORDER_SERVICE_URL
+        - name: TRIP_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: TRIP_SERVICE_URL
+        - name: SOCKET_IO_CORS_ORIGIN
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: SOCKET_IO_CORS_ORIGIN
+        - name: SOCKET_IO_PING_TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: SOCKET_IO_PING_TIMEOUT
+        - name: SOCKET_IO_PING_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: SOCKET_IO_PING_INTERVAL
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: communication-service-config
+              key: LOG_LEVEL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8007
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8007
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - communication-service
+              topologyKey: kubernetes.io/hostname

@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kong-migrations
+  namespace: api-gateway
+  labels:
+    app: kong
+spec:
+  template:
+    metadata:
+      labels:
+        app: kong
+        component: migrations
+    spec:
+      containers:
+      - name: kong-migrations
+        image: kong/kong-gateway:3.4.3.4-ubuntu
+        command:
+        - /bin/sh
+        - -c
+        - |
+          until psql -h postgres -U kong -d kong -c '\q'; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+          kong migrations bootstrap --conf /etc/kong/kong.conf.default
+        envFrom:
+        - configMapRef:
+            name: kong-config
+        - secretRef:
+            name: kong-secrets
+        env:
+        - name: KONG_DATABASE
+          value: "postgres"
+        - name: KONG_PG_HOST
+          value: "postgres"
+        - name: KONG_PG_DATABASE
+          value: "kong"
+        - name: KONG_PG_USER
+          value: "kong"
+        - name: KONG_PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kong-secrets
+              key: KONG_PG_PASSWORD
+      restartPolicy: OnFailure

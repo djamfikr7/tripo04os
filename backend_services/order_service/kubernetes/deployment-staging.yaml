@@ -1,0 +1,195 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tripo04os-staging
+  labels:
+    name: tripo04os-staging
+    environment: staging
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: tripo04os-staging
+data:
+  config.yaml: |
+    server:
+      host: 0.0.0.0
+      port: 8003
+    database:
+      host: postgres-service.tripo04os-staging.svc.cluster.local
+      port: 5432
+      name: tripo04os_orders
+      user: tripo04os
+      password: tripo04os123
+      sslmode: require
+      synchronize: false
+      logging: true
+    kafka:
+      brokers: kafka-service.tripo04os-staging.svc.cluster.local:9092
+      clientId: order-service
+      groupId: order-service-group
+    environment: staging
+    log_level: info
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: order-service-secrets
+  namespace: tripo04os-staging
+type: Opaque
+stringData:
+  database-password: tripo04os123
+  jwt-secret: staging-secret-key-change-in-production
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: tripo04os-staging
+  labels:
+    app: order-service
+    service: order-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8003
+      targetPort: 8003
+      protocol: TCP
+      name: http
+  selector:
+    app: order-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: tripo04os-staging
+  labels:
+    app: order-service
+    service: order-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        service: order-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: order-service
+          image: tripo04os/order-service:staging
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8003
+              name: http
+              protocol: TCP
+            - containerPort: 9090
+              name: metrics
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "staging"
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: order-service-config
+                  key: database.host
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: order-service-config
+                  key: database.port
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: order-service-config
+                  key: database.name
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: order-service-config
+                  key: database.user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: order-service-secrets
+                  key: database-password
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: order-service-config
+                  key: kafka.brokers
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: order-service-secrets
+                  key: jwt-secret
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8003
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      restartPolicy: Always
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: tripo04os-staging
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-service-pdb
+  namespace: tripo04os-staging
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: order-service

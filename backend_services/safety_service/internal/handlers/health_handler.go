@@ -1,18 +1,17 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type HealthHandler struct {
-	db *pgxpool.Pool
+	db *gorm.DB
 }
 
-func NewHealthHandler(db *pgxpool.Pool) *HealthHandler {
+func NewHealthHandler(db *gorm.DB) *HealthHandler {
 	return &HealthHandler{db: db}
 }
 
@@ -24,7 +23,7 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 }
 
 func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
-	err := h.db.Ping(c.Request.Context())
+	sqlDB, err := h.db.DB()
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"status": "not ready",
@@ -33,8 +32,16 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 		return
 	}
 
+	if err := sqlDB.Ping(); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "not ready",
+			"error":  err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"status":    "ready",
+		"status":   "ready",
 		"database": "connected",
 	})
 }

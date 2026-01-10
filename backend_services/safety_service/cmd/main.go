@@ -14,7 +14,7 @@ import (
 	"github.com/djamfikr7/tripo04os/safety-service/internal/database"
 	"github.com/djamfikr7/tripo04os/safety-service/internal/handlers"
 	"github.com/djamfikr7/tripo04os/safety-service/internal/middleware"
-	"github.com/djamfikr7/tripo04os/safety-service/internal/repositories"
+	"github.com/djamfikr7/tripo04os/safety-service/internal/scheduler"
 	"github.com/djamfikr7/tripo04os/safety-service/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -56,14 +56,15 @@ func main() {
 		zap.L().Fatal("Failed to initialize database", zap.Error(err))
 	}
 
-	safetyReportRepo := repositories.NewSafetyReportRepository(db)
-	safetyAlertRepo := repositories.NewSafetyAlertRepository(db)
-
-	safetyService := services.NewSafetyService(safetyReportRepo, safetyAlertRepo, logger)
+	safetyService := services.NewSafetyService(db, logger)
 	safetyHandler := handlers.NewSafetyHandler(safetyService, logger)
 	healthHandler := handlers.NewHealthHandler(db)
 
-	router := setupRouter(cfg, safetyHandler, healthHandler)
+	// Initialize ride check scheduler
+	rideCheckScheduler := scheduler.NewRideCheckScheduler(db, logger, 1*time.Minute)
+	go rideCheckScheduler.Start(context.Background())
+
+	router := setupRouter(cfg, safetyHandler, healthHandler, logger)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
@@ -100,7 +101,7 @@ func main() {
 	zap.L().Info("Server exited")
 }
 
-func setupRouter(cfg *config.Config, safetyHandler *handlers.SafetyHandler, healthHandler *handlers.HealthHandler) *gin.Engine {
+func setupRouter(cfg *config.Config, safetyHandler *handlers.SafetyHandler, healthHandler *handlers.HealthHandler, logger *zap.Logger) *gin.Engine {
 	router := gin.New()
 
 	router.Use(middleware.LoggingMiddleware(logger))
@@ -110,16 +111,8 @@ func setupRouter(cfg *config.Config, safetyHandler *handlers.SafetyHandler, heal
 	router.GET("/health", healthHandler.HealthCheck)
 	router.GET("/ready", healthHandler.ReadinessCheck)
 
-	api := router.Group("/api/v1")
-	{
-		api.POST("/safety/reports", safetyHandler.CreateSafetyReport)
-		api.GET("/safety/reports/:id", safetyHandler.GetSafetyReport)
-		api.GET("/safety/reports/user/:user_id", safetyHandler.GetUserSafetyReports)
-		api.POST("/safety/alerts", safetyHandler.CreateSafetyAlert)
-		api.GET("/safety/alerts/:id", safetyHandler.GetSafetyAlert)
-		api.GET("/safety/alerts", safetyHandler.GetActiveAlerts)
-		api.POST("/safety/emergency", safetyHandler.ReportEmergency)
-	}
+	// Register safety routes
+	safetyHandler.RegisterRoutes(router)
 
 	return router
 }

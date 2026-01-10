@@ -1,0 +1,240 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tripo04os-dev
+  labels:
+    name: tripo04os-dev
+    environment: development
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: identity-service-config
+  namespace: tripo04os-dev
+data:
+  config.yaml: |
+    server:
+      host: 0.0.0.0
+      port: 8000
+    database:
+      host: postgres-service.tripo04os-dev.svc.cluster.local
+      port: 5432
+      name: tripo04os_identity
+      user: tripo04os
+      password: tripo04os123
+      sslmode: disable
+      max_open_conns: 100
+      max_idle_conns: 10
+      conn_max_lifetime: 3600
+    redis:
+      host: redis-service.tripo04os-dev.svc.cluster.local
+      port: 6379
+      password: ""
+      db: 0
+      pool_size: 10
+    jwt:
+      secret: dev-secret-key-change-in-production
+      access_token_duration: 3600
+      refresh_token_duration: 604800
+    environment: development
+    log_level: debug
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: identity-service-secrets
+  namespace: tripo04os-dev
+type: Opaque
+stringData:
+  database-password: tripo04os123
+  jwt-secret: dev-secret-key-change-in-production
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service
+  namespace: tripo04os-dev
+  labels:
+    app: identity-service
+    service: identity-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: identity-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-service
+  namespace: tripo04os-dev
+  labels:
+    app: identity-service
+    service: identity-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: identity-service
+  template:
+    metadata:
+      labels:
+        app: identity-service
+        service: identity-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: identity-service
+          image: tripo04os/identity-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+            - containerPort: 9090
+              name: metrics
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: "development"
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-service-config
+                  key: host
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-service-config
+                  key: port
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-service-config
+                  key: name
+            - name: DATABASE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-service-config
+                  key: user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: identity-service-secrets
+                  key: database-password
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-service-config
+                  key: redis-host
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-service-config
+                  key: redis-port
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: identity-service-secrets
+                  key: jwt-secret
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      restartPolicy: Always
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: identity-service-hpa
+  namespace: tripo04os-dev
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: identity-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: identity-service-pdb
+  namespace: tripo04os-dev
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: identity-service
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity-service
+  namespace: tripo04os-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: identity-service
+  namespace: tripo04os-dev
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: identity-service
+  namespace: tripo04os-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: identity-service
+subjects:
+  - kind: ServiceAccount
+    name: identity-service
+    namespace: tripo04os-dev
