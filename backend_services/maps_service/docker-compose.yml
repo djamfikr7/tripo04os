@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  maps-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: maps-service
+    ports:
+      - "8014:8014"
+    environment:
+      - PORT=8014
+      - ENVIRONMENT=production
+      - NOMINATIM_URL=https://nominatim.openstreetmap.org/search
+      - OSRM_URL=http://router.project-osrm.org/route/v1/driving
+      - USER_AGENT=Tripo04OS/1.0
+    networks:
+      - tripo04os-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8014/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  tripo04os-network:
+    external: true
