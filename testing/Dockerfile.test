@@ -1,0 +1,26 @@
+# Dockerfile for Test Runner
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache python3 py3-pip
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+COPY shared/ ./shared/
+COPY e2e/ ./e2e/
+COPY performance/ ./performance/
+COPY security/ ./security/
+COPY load/ ./load/
+
+ENV TEST_ENV=docker
+ENV TEST_TIMEOUT=30000
+
+WORKDIR /app/e2e
+
+CMD ["npm", "run", "test:e2e"]
