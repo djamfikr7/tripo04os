@@ -4,6 +4,8 @@ import { People, DirectionsCar, Security, Support, MoreVert } from '@mui/icons-m
 import UsersManagement from './components/UsersManagement';
 import OrderMonitoring from './components/OrderMonitoring';
 import FraudReputation from './components/FraudReputation';
+import SupportTickets from './components/SupportTickets';
+import ConfigurationSettings from './components/ConfigurationSettings';
 
 const theme = createTheme({
   palette: {
@@ -159,7 +161,8 @@ function App() {
                     </Box>
                   )}
                   {tabValue === 3 && <FraudReputation />}
-                  {tabValue === 4 && (
+                  {tabValue === 4 && <SupportTickets />}
+                  {tabValue === 5 && <ConfigurationSettings />}
                     <Box>
                       <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
                         Support Tickets
