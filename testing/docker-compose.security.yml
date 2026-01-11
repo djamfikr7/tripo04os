@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # OWASP ZAP
+  zap:
+    image: owasp/zap2docker-stable:latest
+    container_name: owasp-zap
+    ports:
+      - "8080:8080"
+      - "8090:8090"
+    volumes:
+      - ./owasp/zap-config:/zap/wrk/
+      - ./owasp/zap-scan-results:/zap/wrk/
+      - zap-data:/zap/wrk
+    command:
+      -zap-webswing-port 8080 -zap-apiport 8090
+      -daemon
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Target Application (scan all services)
+  api-gateway:
+    image: tripo04os/api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=testing
+    networks:
+      - security-network
+    restart: unless-stopped
+
+networks:
+  security-network:
+    driver: bridge
