@@ -281,6 +281,128 @@ security_events = {
 }
 ```
 
+## Security Headers
+
+All services enforce the following security headers via the security middleware:
+
+| Header | Value | Purpose |
+|--------|-------|---------|
+| X-Content-Type-Options | nosniff | Prevents MIME-type sniffing |
+| X-XSS-Protection | 1; mode=block | Enables XSS filter |
+| X-Frame-Options | SAMEORIGIN | Prevents clickjacking |
+| Strict-Transport-Security | max-age=31536000; includeSubDomains; preload | Enforces HTTPS |
+| Content-Security-Policy | script-src 'self' 'unsafe-inline' | Controls resource loading |
+| X-DNS-Prefetch-Control | off | Disables DNS prefetching |
+| X-Permitted-Cross-Domain-Policies | none | Disables cross-domain policies |
+| Referrer-Policy | no-referrer | Controls referrer information |
+| Cache-Control | no-store, no-cache, must-revalidate, private | Prevents caching sensitive data |
+
+### Validating Security Headers
+
+```bash
+# Check headers on running service
+curl -I http://localhost:8000/health
+
+# Expected headers should be present in response
+```
+
+### CSP Violation Reporting
+
+All services include a CSP report endpoint at `/csp-report` that logs violations for monitoring.
+
+---
+
+## Rate Limiting
+
+Rate limiting is implemented on the API Gateway to prevent abuse and protect services from DoS attacks.
+
+### Configuration
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| RATE_LIMIT_WINDOW_MS | 60000 | Time window in milliseconds (1 minute) |
+| RATE_LIMIT_REQUESTS | 100 | Maximum requests per window per IP |
+
+### Custom Rate Limits
+
+Edit environment variables in `testing/docker-compose.api-gateway.yml`:
+
+```yaml
+environment:
+  - RATE_LIMIT_WINDOW_MS=60000
+  - RATE_LIMIT_REQUESTS=100
+```
+
+### Rate Limiting Features
+
+- **IP-based**: Limits are enforced per IP address
+- **Standard Headers**: Includes `X-RateLimit-*` headers in responses
+- **Retry-After**: Returns `Retry-After` header when rate limited
+- **Sliding Window**: Uses time-based sliding window algorithm
+
+### Testing Rate Limiting
+
+```bash
+# Send requests until rate limit is hit
+for i in {1..150}; do
+  curl -w "Status: %{http_code}\n" http://localhost:8000/health
+done
+```
+
+Expected response after 100 requests:
+```
+Status: 429
+Too Many Requests - Rate limit exceeded
+```
+
+### Service-Specific Limits
+
+Different services can have custom rate limits:
+
+| Service | Endpoint | Rate Limit |
+|---------|----------|------------|
+| Identity Service | `/api/auth/login` | 10/min |
+| Order Service | `/api/orders` | 100/min |
+| Payment Service | `/api/payments` | 50/min |
+| API Gateway | `/*` | 100/min (default) |
+
+---
+
+## Security Middleware Architecture
+
+### API Gateway with Security Middleware
+
+```
+Client → API Gateway → Security Middleware → Services
+                  ↓
+        [Rate Limiting]
+        [Security Headers]
+        [Request Validation]
+        [Response Sanitization]
+```
+
+### Security Middleware Service
+
+Location: `services/security-middleware/`
+
+The security middleware service:
+- Applies security headers to all responses
+- Enforces rate limiting per IP
+- Validates request formats
+- Logs security events
+- Implements CSP violation reporting
+
+### Running Security Middleware Standalone
+
+```bash
+# Build and run security middleware
+cd services/security-middleware
+docker build -f Dockerfile.security-headers -t security-middleware .
+docker run -p 8000:8000 -e RATE_LIMIT_WINDOW_MS=60000 -e RATE_LIMIT_REQUESTS=100 security-middleware
+```
+
+---
+
 ## Next Steps
 
 1. Run full security scan
@@ -288,6 +410,8 @@ security_events = {
 3. Address high-severity issues
 4. Document security posture
 5. Implement continuous security monitoring
+6. Verify security headers on all services
+7. Test rate limiting on API Gateway
 
 ## License
 

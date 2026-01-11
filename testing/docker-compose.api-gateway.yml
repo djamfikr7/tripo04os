@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: ./services/security-middleware
+      dockerfile: Dockerfile.security-headers
+    container_name: tripo04os-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - RATE_LIMIT_WINDOW_MS=60000
+      - RATE_LIMIT_REQUESTS=100
+    volumes:
+      - ./services/security-middleware:/app
+      - ./services/security-middleware:/config
+    networks:
+      - security-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: tripo04os-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - security-network
+    restart: unless-stopped
+
+networks:
+  security-network:
+    driver: bridge
+
+volumes:
+  redis-data:

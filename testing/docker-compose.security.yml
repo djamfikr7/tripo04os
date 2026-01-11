@@ -1,32 +1,321 @@
 version: '3.8'
 
 services:
-  # OWASP ZAP
-  zap:
-    image: owasp/zap2docker-stable:latest
-    container_name: owasp-zap
+  # API Gateway with security headers middleware
+  api-gateway:
+    build:
+      context: ./services/security-middleware
+      dockerfile: Dockerfile.security-headers
+    container_name: tripo04os-api-gateway
     ports:
-      - "8080:8080"
-      - "8090:8090"
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
     volumes:
-      - ./owasp/zap-config:/zap/wrk/
-      - ./owasp/zap-scan-results:/zap/wrk/
-      - zap-data:/zap/wrk
-    command:
-      -zap-webswing-port 8080 -zap-apiport 8090
-      -daemon
+      - ./services/security-middleware:/app
+      - ./services/security-middleware:/config
     networks:
       - security-network
     restart: unless-stopped
 
-  # Target Application (scan all services)
-  api-gateway:
-    image: tripo04os/api-gateway:latest
-    container_name: api-gateway
+  # Identity Service
+  identity-service:
+    build:
+      context: ./backend_services/identity_service
+      dockerfile: Dockerfile.security-headers
+    container_name: tripo04os-identity-service
     ports:
-      - "8000:8000"
+      - "8001:8001"
     environment:
-      - ENVIRONMENT=testing
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Order Service
+  order-service:
+    build:
+      context: ./backend_services/order_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-order-service
+    ports:
+      - "8003:8003"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Trip Service
+  trip-service:
+    build:
+      context: ./backend_services/trip_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-trip-service
+    ports:
+      - "8004:8004"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Matching Service
+  matching-service:
+    build:
+      context: ./backend_services/matching_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-matching-service
+    ports:
+      - "8005:8005"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Pricing Service
+  pricing-service:
+    build:
+      context: ./backend_services/pricing_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-pricing-service
+    ports:
+      - "8006:8006"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Location Service
+  location-service:
+    build:
+      context: ./backend_services/location_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-location-service
+    ports:
+      - "8002:8002"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./backend_services/payment_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-payment-service
+    ports:
+      - "8013:8013"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Maps Service
+  maps-service:
+    build:
+      context: ./backend_services/maps_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-maps-service
+    ports:
+      - "8014:8014"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./backend_services/notification_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-notification-service
+    ports:
+      - "8015:8015"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # SMS Service
+  sms-service:
+    build:
+      context: ./backend_services/sms_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-sms-service
+    ports:
+      - "8016:8016"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Email Service
+  email-service:
+    build:
+      context: ./backend_services/email_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-email-service
+    ports:
+      - "8017:8017"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Communication Service
+  communication-service:
+    build:
+      context: ./backend_services/communication_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-communication-service
+    ports:
+      - "8005:8005"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Safety Service
+  safety-service:
+    build:
+      context: ./backend_services/safety_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-safety-service
+    ports:
+      - "8018:8018"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Reputation Service
+  reputation-service:
+    build:
+      context: ./backend_services/reputation_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-reputation-service
+    ports:
+      - "8019:8019"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Fraud Service
+  fraud-service:
+    build:
+      context: ./backend_services/fraud_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-fraud-service
+    ports:
+      - "8020:8020"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Subscription Service
+  subscription-service:
+    build:
+      context: ./backend_services/subscription_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-subscription-service
+    ports:
+      - "8021:8021"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./backend_services/analytics_service
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-analytics-service
+    ports:
+      - "8022:8022"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Admin Dashboard (React application)
+  admin-dashboard:
+    build:
+      context: ./admin_dashboard_react
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-admin-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Rider App (Flutter)
+  rider-app:
+    build:
+      context: ./user_mobile_app_rider_flutter
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-rider-app
+    ports:
+      - "8023:8023"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Driver App (Flutter)
+  driver-app:
+    build:
+      context: ./driver_mobile_app_flutter
+      dockerfile: Dockerfile.security-headers
+      container_name: tripo04os-driver-app
+    ports:
+      - "8024:8024"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
     networks:
       - security-network
     restart: unless-stopped
