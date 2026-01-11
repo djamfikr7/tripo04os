@@ -1,0 +1,310 @@
+# Grafana Dashboards for Tripo04OS Testing
+
+## Overview
+
+Grafana dashboards for monitoring system performance during load testing and production.
+
+## Dashboard 1: Service Overview
+
+**Purpose**: High-level overview of all system metrics
+
+**Panels**:
+1. Request Rate
+   - Requests per second (total, by service)
+   - Error rate (4xx, 5xx)
+
+2. Response Time
+   - p50 latency
+   - p95 latency
+   - p99 latency
+
+3. System Health
+   - Service uptime (up/down)
+   - Database status
+   - Redis status
+   - Kafka status
+
+4. Infrastructure
+   - CPU usage by service
+   - Memory usage by service
+   - Disk I/O
+   - Network I/O
+
+### Queries
+
+```json
+{
+  "title": "Request Rate",
+  "targets": [
+    {
+      "expr": "sum(rate(http_requests_total[5m])) by (service)",
+      "legendFormat": "{{service}}",
+      "refId": "requestRate"
+    }
+  ],
+  "yaxes": [
+    {
+      "format": "ops",
+      "label": "service",
+      "name": "Service",
+      "values": ["identity", "order", "trip", "matching", "pricing", "payment", "location", "maps", "notification", "sms", "email"]
+    }
+  ]
+}
+
+{
+  "title": "Response Time",
+  "targets": [
+    {
+      "expr": "histogram_quantile(0.95, http_request_duration_seconds[5m]))",
+      "legendFormat": "95th percentile",
+      "refId": "responseTime"
+    },
+    {
+      "expr": "histogram_quantile(0.99, http_request_duration_seconds[5m]))",
+      "legendFormat": "99th percentile",
+      "refId": "responseTime"
+    }
+  ],
+  "yaxes": [
+    {
+      "format": "ms",
+      "label": "endpoint",
+      "name": "Endpoint",
+      "values": ["/api/v1/auth/login", "/api/v1/orders", "/api/v1/trips"]
+    }
+  ]
+}
+```
+
+## Dashboard 2: API Performance Detail
+
+**Purpose**: Detailed API performance analysis by endpoint
+
+**Panels**:
+1. Endpoint Response Times
+   - Histograms for each endpoint
+   - Error rates by endpoint
+   - Request size distribution
+
+2. Database Performance
+   - Query execution times
+   - Connection pool metrics
+   - Table/index scan rates
+
+### Queries
+
+```json
+{
+  "title": "Endpoint Performance",
+  "targets": [
+    {
+      "expr": "histogram_quantile(0.95, http_request_duration_seconds{endpoint=\"/api/v1/auth/login\"}[5m]))",
+      "legendFormat": "95th percentile",
+      "refId": "authLoginP95"
+    },
+    {
+      "expr": "histogram_quantile(0.99, http_request_duration_seconds{endpoint=\"/api/v1/auth/login\"}[5m]))",
+      "legendFormat": "99th percentile",
+      "refId": "authLoginP99"
+    },
+    {
+      "expr": "sum(rate(http_requests_total{endpoint=\"/api/v1/auth/login\"})) by (status)",
+      "legendFormat": "{{status}}",
+      "refId": "authLoginErrors"
+    }
+  ],
+  "yaxes": [
+    {
+      "format": "ops",
+      "label": "status",
+      "name": "Status",
+      "values": ["200", "400", "401", "500"]
+    }
+  ]
+}
+
+{
+  "title": "Database Performance",
+  "targets": [
+    {
+      "expr": "pg_stat_statements_total",
+      "legendFormat": "Statements",
+      "refId": "dbStatements"
+    },
+    {
+      "expr": "histogram_quantile(0.95, pg_query_duration_seconds[5m]))",
+      "legendFormat": "95th percentile",
+      "refId": "dbQueryP95"
+    },
+    {
+      "expr": "pg_stat_connections_count",
+      "legendFormat": "Connections",
+      "refId": "dbConnections"
+    }
+  ],
+  "yaxes": [
+    {
+      "format": "ops",
+      "label": "database",
+      "name": "Database",
+      "values": ["tripo04os_test"]
+    }
+  ]
+}
+```
+
+## Dashboard 3: Message Queue Performance
+
+**Purpose**: Monitor Kafka message queue during load testing
+
+**Panels**:
+1. Consumer Lag
+   - Consumer lag by topic
+   - Lag by consumer group
+
+2. Throughput
+   - Messages produced per second
+   - Messages consumed per second
+
+3. Queue Depth
+   - Queue size by topic
+   - Backlog by topic
+
+### Queries
+
+```json
+{
+  "title": "Consumer Lag",
+  "targets": [
+    {
+      "expr": "kafka_consumer_lag{topic=\"orders\"}[5m])",
+      "legendFormat": "Lag",
+      "refId": "ordersLag"
+    }
+  ],
+  "yaxes": [
+    {
+      "format": "ops",
+      "label": "topic",
+      "name": "Topic",
+      "values": ["orders", "trips", "notifications"]
+    }
+  ]
+}
+
+{
+  "title": "Throughput",
+  "targets": [
+    {
+      "expr": "sum(rate(kafka_message_consumed_total{topic=\"orders\"}[1m]))",
+      "legendFormat": "Consumed/sec",
+      "refId": "ordersThroughput"
+    },
+    {
+      "expr": "sum(rate(kafka_message_produced_total{topic=\"orders\"}[1m]))",
+      "legendFormat": "Produced/sec",
+      "refId": "ordersProduced"
+    }
+  ]
+}
+
+{
+  "title": "Queue Depth",
+  "targets": [
+    {
+      "expr": "kafka_consumer_group_members_count{topic=\"orders\"}",
+      "legendFormat": "Consumers",
+      "refId": "ordersConsumers"
+    }
+  ]
+}
+```
+
+## Dashboard 4: Infrastructure Health
+
+**Purpose**: Monitor infrastructure resources during load tests
+
+**Panels**:
+1. CPU Usage
+   - CPU usage by service
+   - Load averages
+   - CPU percentage
+
+2. Memory Usage
+   - Memory usage by service
+   - Memory percentage
+   - Swap usage
+
+3. Disk I/O
+   - Read operations per second
+   - Write operations per second
+   - Disk usage percentage
+
+4. Network I/O
+   - Network receive rate
+   - Network transmit rate
+   - Network error rate
+
+5. Open File Descriptors
+   - FD count by service
+   - FD limit
+
+### Queries
+
+```json
+{
+  "title": "CPU Usage",
+  "targets": [
+    {
+      "expr": "system_cpu_usage_percent{service=\"identity-service\"}",
+      "legendFormat": "Identity",
+      "refId": "cpuIdentity"
+    },
+    {
+      "expr": "system_cpu_usage_percent{service=\"order-service\"}",
+      "legendFormat": "Order",
+      "refId": "cpuOrder"
+    }
+  ],
+  "yaxes": [
+    {
+      "format": "ops",
+      "label": "service",
+      "name": "Service",
+      "values": ["identity-service", "order-service", "trip-service", "matching-service", "pricing-service", "payment-service", "location-service", "maps-service", "notification-service", "sms-service", "email-service"]
+    }
+  ]
+}
+```
+
+## Installation
+
+1. Create provisioning directory:
+```bash
+mkdir -p grafana/provisioning
+mkdir -p grafana/dashboards
+```
+
+2. Create datasource configuration:
+```bash
+# Add Prometheus datasource to Grafana
+# URL: http://prometheus:9090
+```
+
+3. Import dashboards:
+```bash
+# Import dashboard JSON files into Grafana
+# Files: dashboard-1-overview.json, dashboard-2-api-performance.json, etc.
+```
+
+## Alerting
+
+Configure alert channels:
+- Email alerts for critical alerts
+- Slack integration for warnings
+- PagerDuty for escalations
+
+## License
+
+Proprietary - Tripo04OS Internal Use Only

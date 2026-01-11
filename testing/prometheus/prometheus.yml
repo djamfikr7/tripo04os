@@ -1,0 +1,261 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'tripo04os-test'
+    environment: 'testing'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - '/etc/prometheus/alerts/*.yml'
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          component: 'monitoring'
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8080']
+        labels:
+          service: 'api-gateway'
+          component: 'gateway'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Identity Service
+  - job_name: 'identity-service'
+    static_configs:
+      - targets: ['identity-service:8000']
+        labels:
+          service: 'identity-service'
+          component: 'core'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Order Service
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:8010']
+        labels:
+          service: 'order-service'
+          component: 'core'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Trip Service
+  - job_name: 'trip-service'
+    static_configs:
+      - targets: ['trip-service:8009']
+        labels:
+          service: 'trip-service'
+          component: 'core'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Matching Service
+  - job_name: 'matching-service'
+    static_configs:
+      - targets: ['matching-service:8011']
+        labels:
+          service: 'matching-service'
+          component: 'core'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Pricing Service
+  - job_name: 'pricing-service'
+    static_configs:
+      - targets: ['pricing-service:8007']
+        labels:
+          service: 'pricing-service'
+          component: 'core'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Location Service
+  - job_name: 'location-service'
+    static_configs:
+      - targets: ['location-service:8008']
+        labels:
+          service: 'location-service'
+          component: 'foundation'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Communication Service
+  - job_name: 'communication-service'
+    static_configs:
+      - targets: ['communication-service:8005']
+        labels:
+          service: 'communication-service'
+          component: 'core'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Safety Service
+  - job_name: 'safety-service'
+    static_configs:
+      - targets: ['safety-service:8018']
+        labels:
+          service: 'safety-service'
+          component: 'advanced'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Reputation Service
+  - job_name: 'reputation-service'
+    static_configs:
+      - targets: ['reputation-service:8019']
+        labels:
+          service: 'reputation-service'
+          component: 'advanced'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Fraud Service
+  - job_name: 'fraud-service'
+    static_configs:
+      - targets: ['fraud-service:8020']
+        labels:
+          service: 'fraud-service'
+          component: 'advanced'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Subscription Service
+  - job_name: 'subscription-service'
+    static_configs:
+      - targets: ['subscription-service:8021']
+        labels:
+          service: 'subscription-service'
+          component: 'advanced'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Analytics Service
+  - job_name: 'analytics-service'
+    static_configs:
+      - targets: ['analytics-service:8022']
+        labels:
+          service: 'analytics-service'
+          component: 'advanced'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Payment Service
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['payment-service:8013']
+        labels:
+          service: 'payment-service'
+          component: 'integration'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Maps Service
+  - job_name: 'maps-service'
+    static_configs:
+      - targets: ['maps-service:8014']
+        labels:
+          service: 'maps-service'
+          component: 'integration'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Notification Service
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:8015']
+        labels:
+          service: 'notification-service'
+          component: 'integration'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # SMS Service
+  - job_name: 'sms-service'
+    static_configs:
+      - targets: ['sms-service:8016']
+        labels:
+          service: 'sms-service'
+          component: 'integration'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Email Service
+  - job_name: 'email-service'
+    static_configs:
+      - targets: ['email-service:8017']
+        labels:
+          service: 'email-service'
+          component: 'integration'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres-exporter'
+          component: 'database'
+    scrape_interval: 15s
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis-exporter'
+          component: 'cache'
+    scrape_interval: 15s
+
+  # Kafka JMX Exporter
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+        labels:
+          service: 'kafka-exporter'
+          component: 'message-queue'
+    scrape_interval: 15s
+
+  # Node Exporter (system metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+          component: 'infrastructure'
+    scrape_interval: 10s
+
+  # cAdvisor (container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+          component: 'infrastructure'
+    scrape_interval: 10s
+
+  # Test Application
+  - job_name: 'test-app'
+    static_configs:
+      - targets: ['test-app:8021']
+        labels:
+          service: 'test-app'
+          component: 'testing'
+    metrics_path: '/metrics'
+    scrape_interval: 15s

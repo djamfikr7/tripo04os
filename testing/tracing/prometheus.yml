@@ -1,0 +1,63 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Jaeger metrics
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger-collector:14269', 'jaeger-query:16687']
+        labels:
+          service: 'jaeger'
+          component: 'tracing'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Elasticsearch metrics
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch-jaeger:9200']
+        labels:
+          service: 'elasticsearch'
+          component: 'storage'
+    metrics_path: '/_prometheus/metrics'
+    scrape_interval: 15s
+
+  # Kibana metrics
+  - job_name: 'kibana'
+    static_configs:
+      - targets: ['kibana-jaeger:5601']
+        labels:
+          service: 'kibana'
+          component: 'visualization'
+    metrics_path: '/api/status'
+    scrape_interval: 15s
+
+  # Application tracing metrics
+  - job_name: 'tracing-metrics'
+    static_configs:
+      - targets: ['api-gateway:8080', 'identity-service:8000', 'order-service:8010',
+                 'trip-service:8009', 'matching-service:8011', 'pricing-service:8007']
+        labels:
+          service: 'application-tracing'
+          component: 'distributed-tracing'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Span metrics
+  - job_name: 'spans'
+    static_configs:
+      - targets: ['jaeger-collector:14269']
+        labels:
+          service: 'jaeger-spans'
+          component: 'tracing'
+    scrape_interval: 10s
+
+  # Trace duration metrics
+  - job_name: 'trace-duration'
+    static_configs:
+      - targets: ['jaeger-query:16687']
+        labels:
+          service: 'trace-duration'
+          component: 'tracing'
+    scrape_interval: 10s

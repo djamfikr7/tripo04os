@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # Jaeger - Distributed Tracing Platform
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+      - "4317:4317"
+      - "4318:4318"
+      - "6831:6831"
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+      - QUERY_BASE_PATH=/jaeger
+    networks:
+      - monitoring-network
+      - test-network
+    restart: unless-stopped
+
+  # Jaeger Collector
+  jaeger-collector:
+    image: jaegertracing/jaeger-collector:latest
+    container_name: jaeger-collector
+    command:
+      - '--es.server-urls=http://elasticsearch:9200'
+      - '--es.num-shards=1'
+      - '--es.num-replicas=1'
+      - '--log-level=debug'
+    depends_on:
+      - elasticsearch
+    networks:
+      - monitoring-network
+      - test-network
+    restart: unless-stopped
+
+  # Jaeger Query
+  jaeger-query:
+    image: jaegertracing/jaeger-query:latest
+    container_name: jaeger-query
+    command:
+      - '--es.server-urls=http://elasticsearch:9200'
+      - '--span-storage.type=elasticsearch'
+    ports:
+      - "16687:16686"
+      - "16685:16685"
+    depends_on:
+      - elasticsearch
+    networks:
+      - monitoring-network
+      - test-network
+    restart: unless-stopped
+
+  # Jaeger Agent
+  jaeger-agent:
+    image: jaegertracing/jaeger-agent:latest
+    container_name: jaeger-agent
+    command:
+      - '--reporter.grpc.host-port=jaeger-collector:14250'
+      - '--reporter.type=grpc'
+    ports:
+      - "5775:5775/udp"
+      - "5778:5778/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5775:5775"
+      - "6831:6831"
+    networks:
+      - monitoring-network
+      - test-network
+    depends_on:
+      - jaeger-collector
+    restart: unless-stopped
+
+  # Elasticsearch for Jaeger Storage
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch-jaeger
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - monitoring-network
+      - test-network
+    restart: unless-stopped
+
+  # Kibana for Jaeger Visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana-jaeger
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - monitoring-network
+      - test-network
+    restart: unless-stopped
+
+  # Prometheus with Jaeger Integration
+  prometheus-jaeger:
+    image: prom/prometheus:latest
+    container_name: prometheus-jaeger
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./tracing/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - monitoring-network
+      - test-network
+    restart: unless-stopped
+
+  # Grafana with Jaeger Plugin
+  grafana-jaeger:
+    image: grafana/grafana:latest
+    container_name: grafana-jaeger
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    volumes:
+      - ./tracing/grafana-provisioning:/etc/grafana/provisioning
+      - ./tracing/grafana-dashboards:/var/lib/grafana/dashboards
+      - grafana-jaeger-data:/var/lib/grafana
+    networks:
+      - monitoring-network
+      - test-network
+    depends_on:
+      - prometheus-jaeger
+    restart: unless-stopped
+
+volumes:
+  elasticsearch-data:
+  grafana-jaeger-data:
+
+networks:
+  monitoring-network:
+    external: true
+  test-network:
+    external: true
